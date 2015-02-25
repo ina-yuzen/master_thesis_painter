@@ -53,6 +53,54 @@ bool g_bDeviceFound = false;
 ProjectionHelper* g_pProjHelper = NULL;
 StereoCameraParameters g_scp;
 
+void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data){
+	int32_t w, h;
+	FrameFormat_toResolution(data.captureConfiguration.frameFormat, &w, &h);
+	auto dp = (const int16_t *)data.depthMap;
+	cv::Mat depth_image(h, w, CV_16SC1, (void*)dp);
+	cv::Mat dest;
+	cv::threshold(depth_image, dest, 400, 0x7fff, cv::THRESH_BINARY);
+	cv::Mat fill(h, w, CV_8UC1);
+	for (int i = 0; i < dest.rows; i++){
+		for (int j = 0; j < dest.cols; j++){
+			auto n = dest.at<int16_t>(i, j);
+			if (n == 0x7fff) {
+				fill.at<uchar>(i, j) = 255;
+			}
+			else {
+				fill.at<uchar>(i, j) = 0;
+			}
+		}
+
+	}
+	for (int i = 0; i < w; i++){
+		if (fill.at<uchar>(0, i) != 0)
+			cv::floodFill(fill, cv::Point(i, 0), 0);
+		if (fill.at<uchar>(h-1, i)!=0)
+			cv::floodFill(fill, cv::Point(i, h-1), 0);
+	}
+	for (int i = 0; i < h; i++){
+		if (fill.at<uchar>(i, 0) != 0)
+			cv::floodFill(fill, cv::Point(0, i), 0);
+		if (fill.at<uchar>(i, w-1) != 0)
+			cv::floodFill(fill, cv::Point(w - 1, i), 0);
+	}
+	/*
+	std::vector<cv::Mat> contours;
+	std::vector<Vec4i> hierarchy;
+	cv::findContours(fill, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+	int idx = 0;
+	for (; idx >= 0; idx = hierarchy[idx][0])
+	{
+		Scalar color(rand() & 255, rand() & 255, rand() & 255);
+		drawContours(fill, contours, idx, color, CV_FILLED, 8, hierarchy);
+	}*/
+
+	IplImage toShow = fill;
+	cvSaveImage("threshold.ppm", &toShow);
+}
+
 /*----------------------------------------------------------------------------*/
 // New color sample event handler
 void onNewColorSample(ColorNode node, ColorNode::NewSampleReceivedData data)
@@ -133,7 +181,8 @@ void onNewDepthSample(DepthNode node, DepthNode::NewSampleReceivedData data)
 	std::cout << "cx: " << ints.cx << " cy: " << ints.cy << " height: " << ints.height << " width: " << ints.width << 
 		" fx: " << ints.fx << " fy: " << ints.fy << std::endl;
 	
-	detectTouch(data);
+	//detectTouch(data);
+	binaryDepth(data);
     int32_t w, h;
     FrameFormat_toResolution(data.captureConfiguration.frameFormat,&w,&h);
 	auto dp = (const int16_t *)data.depthMap;
