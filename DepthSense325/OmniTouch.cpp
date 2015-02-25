@@ -92,7 +92,7 @@ cv::Vec3i detectTouch(const DepthSense::DepthNode::NewSampleReceivedData& data) 
 					state = 0;
 					auto range = estimateFingerWidthPixel(data, nx, (ny + seq_start_y) / 2);
 					auto dy = ny - seq_start_y;
-					std::cout << nx << ", " << ny << ": " << range.start << " - " << range.end << " : " << dy << std::endl;
+					// std::cout << nx << ", " << ny << ": " << range.start << " - " << range.end << " : " << dy << std::endl;
 					if (dy > range.start && dy < range.end)
 						finger_regions(cv::Rect(nx, seq_start_y, 1, dy + 1)) = cv::Scalar(0,255,0);
 					else
