@@ -27,6 +27,8 @@
 #include <vector>
 #include <exception>
 
+#include "Labeling.h"
+
 using namespace std;
 
 /* OpenCV */
@@ -85,20 +87,43 @@ void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data){
 		if (fill.at<uchar>(i, w-1) != 0)
 			cv::floodFill(fill, cv::Point(w - 1, i), 0);
 	}
-	/*
 	std::vector<cv::Mat> contours;
 	std::vector<Vec4i> hierarchy;
-	cv::findContours(fill, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+	IplImage fillIpl = fill;
+	IplImage *writeTo = cvCreateImage(cvSize(w, h), IPL_DEPTH_8U, 3);
+	CvMemStorage *storage = cvCreateMemStorage(0);
+	CvSeq *cSeq = NULL;
+	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+	while (cSeq != NULL) {
+		/*std::cout << cSeq << " total: " << cSeq->total << std::endl;
+		for (int i = 0; i < cSeq->total; i++) {
+			CvPoint *point = CV_GET_SEQ_ELEM(CvPoint, cSeq, i);
+			std::cout << "  " << point->x << ", " << point->y << std::endl;
+		}*/
+		if (cSeq->total > 10)
+			cvDrawContours(writeTo, cSeq, CV_RGB(255, 0, 0), CV_RGB(0, 0, 255), 0, 3);
+		cSeq = cSeq->h_next;
+	}
+	cvReleaseMemStorage(&storage);
+	cvShowImage("result", writeTo);
+	cvReleaseImage(&writeTo);
 
-	int idx = 0;
-	for (; idx >= 0; idx = hierarchy[idx][0])
+	/*LabelingBS labeling;
+	cv::Mat result
+
+	labeling.Exec(fill.data, result, w, h, true, 30);*/
+
+	//cv::findContours(fill, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+
+	/*size_t idx = 0;
+	for (; idx < contours.size(); idx++)
 	{
 		Scalar color(rand() & 255, rand() & 255, rand() & 255);
 		drawContours(fill, contours, idx, color, CV_FILLED, 8, hierarchy);
 	}*/
 
 	IplImage toShow = fill;
-	cvSaveImage("threshold.ppm", &toShow);
+	cvShowImage("threshold", &fillIpl);
 }
 
 /*----------------------------------------------------------------------------*/
