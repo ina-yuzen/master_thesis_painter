@@ -55,6 +55,8 @@ bool g_bDeviceFound = false;
 ProjectionHelper* g_pProjHelper = NULL;
 StereoCameraParameters g_scp;
 
+const double kMinHoleSize = 100.0;
+
 void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const cv::Mat& normalized){
 	int32_t w, h;
 	FrameFormat_toResolution(data.captureConfiguration.frameFormat, &w, &h);
@@ -67,63 +69,41 @@ void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const
 		for (int j = 0; j < dest.cols; j++){
 			auto n = dest.at<int16_t>(i, j);
 			if (n == 0x7fff) {
-				fill.at<uchar>(i, j) = 255;
+				fill.at<uchar>(i, j) = 0;
 			}
 			else {
-				fill.at<uchar>(i, j) = 0;
+				fill.at<uchar>(i, j) = 0xff;
 			}
 		}
 
 	}
-	for (int i = 0; i < w; i++){
-		if (fill.at<uchar>(0, i) != 0)
-			cv::floodFill(fill, cv::Point(i, 0), 0);
-		if (fill.at<uchar>(h-1, i)!=0)
-			cv::floodFill(fill, cv::Point(i, h-1), 0);
-	}
-	for (int i = 0; i < h; i++){
-		if (fill.at<uchar>(i, 0) != 0)
-			cv::floodFill(fill, cv::Point(0, i), 0);
-		if (fill.at<uchar>(i, w-1) != 0)
-			cv::floodFill(fill, cv::Point(w - 1, i), 0);
-	}
+	IplImage fillToShow = fill;
+	cvShowImage("threshold1", &fillToShow);
 	std::vector<cv::Mat> contours;
 	std::vector<Vec4i> hierarchy;
 	IplImage fillIpl = fill;
+	cvShowImage("threshold", &fillIpl);
 	IplImage *writeTo = cvCreateImage(cvSize(w, h), IPL_DEPTH_8U, 3);
+	IplImage src = normalized;
+	cvMerge(&src, &src ,&src, NULL, writeTo);
 	CvMemStorage *storage = cvCreateMemStorage(0);
 	CvSeq *cSeq = NULL;
+	CvFont font;
+	cvInitFont(&font, CV_FONT_HERSHEY_PLAIN, 1, 1);
 	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 	while (cSeq != NULL) {
-		/*std::cout << cSeq << " total: " << cSeq->total << std::endl;
-		for (int i = 0; i < cSeq->total; i++) {
-			CvPoint *point = CV_GET_SEQ_ELEM(CvPoint, cSeq, i);
-			std::cout << "  " << point->x << ", " << point->y << std::endl;
-		}*/
-		if (cSeq->total > 10)
+		
+		if (cSeq->total > 10 && cSeq->flags & CV_SEQ_FLAG_HOLE && cvContourArea(cSeq) > kMinHoleSize) {
+			char buf[128];
+			sprintf(buf, "%lf", cvContourArea(cSeq));
+			cvPutText(writeTo, buf, ((CvChain*)cSeq)->origin, &font, CV_RGB(0,0,0));
 			cvDrawContours(writeTo, cSeq, CV_RGB(255, 0, 0), CV_RGB(0, 0, 255), 0, 3);
+		}
 		cSeq = cSeq->h_next;
 	}
 	cvReleaseMemStorage(&storage);
 	cvShowImage("result", writeTo);
 	cvReleaseImage(&writeTo);
-
-	/*LabelingBS labeling;
-	cv::Mat result
-
-	labeling.Exec(fill.data, result, w, h, true, 30);*/
-
-	//cv::findContours(fill, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
-
-	/*size_t idx = 0;
-	for (; idx < contours.size(); idx++)
-	{
-		Scalar color(rand() & 255, rand() & 255, rand() & 255);
-		drawContours(fill, contours, idx, color, CV_FILLED, 8, hierarchy);
-	}*/
-
-	IplImage toShow = fill;
-	cvShowImage("threshold", &fillIpl);
 }
 
 /*----------------------------------------------------------------------------*/
