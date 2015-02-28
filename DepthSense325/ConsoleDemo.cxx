@@ -55,7 +55,7 @@ bool g_bDeviceFound = false;
 ProjectionHelper* g_pProjHelper = NULL;
 StereoCameraParameters g_scp;
 
-void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data){
+void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const cv::Mat& normalized){
 	int32_t w, h;
 	FrameFormat_toResolution(data.captureConfiguration.frameFormat, &w, &h);
 	auto dp = (const int16_t *)data.depthMap;
@@ -201,8 +201,6 @@ const int SATUATED = 32000;
 
 void onNewDepthSample(DepthNode node, DepthNode::NewSampleReceivedData data)
 {
-	//detectTouch(data);
-	binaryDepth(data);
     int32_t w, h;
     FrameFormat_toResolution(data.captureConfiguration.frameFormat,&w,&h);
 	auto dp = (const int16_t *)data.depthMap;
@@ -221,8 +219,9 @@ void onNewDepthSample(DepthNode node, DepthNode::NewSampleReceivedData data)
 		else normalized = 0xff - (dp[i] * 0xf0) / largest;
 		mat.at<uint8_t>(i) = normalized;
 	}
-	IplImage toShow = mat;
-	cvShowImage("normalized", &toShow);
+
+	//detectTouch(data);
+	binaryDepth(data, mat);
 	waitKey(1);
 }
 
