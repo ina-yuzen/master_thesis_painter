@@ -201,11 +201,6 @@ const int SATUATED = 32000;
 
 void onNewDepthSample(DepthNode node, DepthNode::NewSampleReceivedData data)
 {
-	std::cout << "vs: " << data.vertices.size() << " depths: " << data.depthMap.size() << std::endl;
-	auto ints = data.stereoCameraParameters.depthIntrinsics;
-	std::cout << "cx: " << ints.cx << " cy: " << ints.cy << " height: " << ints.height << " width: " << ints.width << 
-		" fx: " << ints.fx << " fy: " << ints.fy << std::endl;
-	
 	//detectTouch(data);
 	binaryDepth(data);
     int32_t w, h;
