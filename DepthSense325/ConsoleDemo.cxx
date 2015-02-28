@@ -56,6 +56,7 @@ ProjectionHelper* g_pProjHelper = NULL;
 StereoCameraParameters g_scp;
 
 const double kMinHoleSize = 100.0;
+const int kErosionSize = 3;
 static CvVideoWriter *vwr;
 
 void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const cv::Mat& normalized){
@@ -78,27 +79,61 @@ void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const
 		}
 
 	}
-	IplImage fillToShow = fill;
-	cvShowImage("threshold1", &fillToShow);
 	std::vector<cv::Mat> contours;
 	std::vector<Vec4i> hierarchy;
 	IplImage fillIpl = fill;
 	cvShowImage("threshold", &fillIpl);
+
+	cv::Mat dilated = fill.clone();
+	auto element = cv::getStructuringElement(MORPH_CROSS, cv::Size(kErosionSize * 2 + 1, kErosionSize * 2 + 1), cv::Point(kErosionSize, kErosionSize));
+	dilate(fill, dilated, element);
+
 	IplImage *writeTo = cvCreateImage(cvSize(w, h), IPL_DEPTH_8U, 3);
 	IplImage src = normalized;
-	cvMerge(&src, &src ,&src, NULL, writeTo);
+	cvMerge(&fillIpl, &src ,&src, NULL, writeTo);
 	CvMemStorage *storage = cvCreateMemStorage(0);
 	CvSeq *cSeq = NULL;
 	CvFont font;
 	cvInitFont(&font, CV_FONT_HERSHEY_PLAIN, 1, 1);
-	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+	cvFindContours(&(IplImage)dilated, storage, &cSeq, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 	while (cSeq != NULL) {
 		
 		if (cSeq->total > 10 && cSeq->flags & CV_SEQ_FLAG_HOLE && cvContourArea(cSeq) > kMinHoleSize) {
 			char buf[128];
 			sprintf(buf, "%lf", cvContourArea(cSeq));
 			cvPutText(writeTo, buf, ((CvChain*)cSeq)->origin, &font, CV_RGB(0,0,0));
-			cvDrawContours(writeTo, cSeq, CV_RGB(255, 0, 0), CV_RGB(0, 0, 255), 0, 3);
+			// cvDrawContours(writeTo, cSeq, CV_RGB(255, 0, 0), CV_RGB(0, 0, 255), 0, 3);
+			
+			CvSeqReader reader;
+			cvStartReadSeq(cSeq, &reader, 0);
+			std::vector<cv::Point> pts;
+			for (int i = 0; i < cSeq->total; i++)
+			{
+				cv::Point pt;
+				CV_READ_SEQ_ELEM(pt, reader);
+				pts.push_back(pt);
+			}
+			CvMoments mu;
+			cvMoments(cSeq, &mu, false);
+			if (mu.m00 == 0) {
+				cSeq = cSeq->h_next;
+				continue;
+			}
+			auto massCenter = cv::Point2d(mu.m10/mu.m00, mu.m01/mu.m00);
+			for (int i = 0; i < pts.size(); i++)
+			{
+				auto pt = pts[i];
+				Vec2d orientation(pt.x - massCenter.x, pt.y - massCenter.y);
+				Vec2d diff = orientation * (float)(kErosionSize) * 1.8 / norm(orientation);
+				auto estimated = cv::Point(pt.x + diff.val[0], pt.y + diff.val[1]);
+				if (estimated.x >= 0 &&
+					estimated.y >= 0 &&
+					estimated.x < fill.cols &&
+					estimated.y < fill.rows &&
+					fill.at<uchar>(estimated) == 0) {
+						cvCircle(writeTo, estimated, 3, CV_RGB(0,255,255), -1);
+				}
+			}
 		}
 		cSeq = cSeq->h_next;
 	}
