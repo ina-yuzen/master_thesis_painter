@@ -56,6 +56,7 @@ ProjectionHelper* g_pProjHelper = NULL;
 StereoCameraParameters g_scp;
 
 const double kMinHoleSize = 100.0;
+static CvVideoWriter *vwr;
 
 void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const cv::Mat& normalized){
 	int32_t w, h;
@@ -103,6 +104,7 @@ void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const
 	}
 	cvReleaseMemStorage(&storage);
 	cvShowImage("result", writeTo);
+	cvWriteFrame(vwr, writeTo);
 	cvReleaseImage(&writeTo);
 }
 
@@ -387,6 +389,7 @@ int main(int argc, char* argv[])
         for (int n = 0; n < (int)na.size();n++)
             configureNode(na[n]);
     }
+	vwr = cvCreateVideoWriter("no_noise.mpg", CV_FOURCC('P', 'I', 'M', '1'), 24, cvSize(320, 240));
 
     g_context.startNodes();
 
@@ -399,6 +402,7 @@ int main(int argc, char* argv[])
 
     if (g_pProjHelper)
         delete g_pProjHelper;
+	cvReleaseVideoWriter(&vwr);
 
     return 0;
 }
