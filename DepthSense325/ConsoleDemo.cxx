@@ -58,6 +58,14 @@ StereoCameraParameters g_scp;
 const double kMinHoleSize = 100.0;
 const int kErosionSize = 3;
 static CvVideoWriter *vwr;
+static bool saving = false;
+
+void saveSampleImage(const char* name, const cv::Mat& mat) {
+	if (!saving)
+		return;
+	IplImage tmp = mat;
+	cvSaveImage(name, &tmp);
+}
 
 void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const cv::Mat& normalized){
 	int32_t w, h;
@@ -239,7 +247,9 @@ void onNewDepthSample(DepthNode node, DepthNode::NewSampleReceivedData data)
 
 	//detectTouch(data);
 	binaryDepth(data, mat);
-	waitKey(1);
+	auto key = waitKey(1);
+	if (key == 0x20)
+		saving = !saving;
 }
 
 /*----------------------------------------------------------------------------*/
