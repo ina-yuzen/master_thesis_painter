@@ -29,10 +29,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ConsoleDemo.cxx" />
+    <ClCompile Include="LibGroundCalibration\GPGesutureRecognition.cpp" />
+    <ClCompile Include="LibGroundCalibration\GroundPlaneCalibration.cpp" />
     <ClCompile Include="OmniTouch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Labeling.h" />
+    <ClInclude Include="LibGroundCalibration\GPGesutureRecognition.h" />
+    <ClInclude Include="LibGroundCalibration\GroundCalibrationConst.h" />
+    <ClInclude Include="LibGroundCalibration\GroundPlaneCalibration.h" />
     <ClInclude Include="OmniTouch.h" />
   </ItemGroup>
   <ItemGroup>

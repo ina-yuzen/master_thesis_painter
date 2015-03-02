@@ -131,7 +131,7 @@ void binaryDepth(const DepthSense::DepthNode::NewSampleReceivedData& data, const
 				auto pt = pts[i];
 				Vec2d orientation(pt.x - massCenter.x, pt.y - massCenter.y);
 				Vec2d diff = orientation * (float)(kErosionSize) * 1.8 / norm(orientation);
-				auto estimated = cv::Point(pt.x + diff.val[0], pt.y + diff.val[1]);
+				auto estimated = cv::Point(pt.x + static_cast<int>(diff.val[0]), pt.y + static_cast<int>(diff.val[1]));
 				if (estimated.x >= 0 &&
 					estimated.y >= 0 &&
 					estimated.x < fill.cols &&
