@@ -27,8 +27,6 @@
 #include <vector>
 #include <exception>
 
-#include "Labeling.h"
-
 using namespace std;
 
 /* OpenCV */
