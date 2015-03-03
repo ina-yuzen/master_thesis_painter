@@ -29,11 +29,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ConsoleDemo.cxx" />
+    <ClCompile Include="DepthMap.cpp" />
+    <ClCompile Include="DSClient.cpp" />
     <ClCompile Include="LibGroundCalibration\GPGesutureRecognition.cpp" />
     <ClCompile Include="LibGroundCalibration\GroundPlaneCalibration.cpp" />
     <ClCompile Include="OmniTouch.cpp" />
+    <ClCompile Include="PinchWilson.cpp" />
+    <ClCompile Include="Recorder.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Context.h" />
+    <ClInclude Include="DepthMap.h" />
+    <ClInclude Include="DSClient.h" />
+    <ClInclude Include="PinchWilson.h" />
+    <ClInclude Include="Recorder.h" />
     <ClInclude Include="LibGroundCalibration\GPGesutureRecognition.h" />
     <ClInclude Include="LibGroundCalibration\GroundCalibrationConst.h" />
     <ClInclude Include="LibGroundCalibration\GroundPlaneCalibration.h" />
