@@ -22,10 +22,7 @@ static void configureDepthNode(DepthSense::DepthNode node,
 // New color sample event handler
 void onNewColorSample(DepthSense::ColorNode node, DepthSense::ColorNode::NewSampleReceivedData data, std::shared_ptr<DSClient> ds_client)
 {
-	cv::Mat yuy2src(kDepthHeight, kDepthHeight, CV_8UC3, (void*)(const uint8_t*)data.colorMap);
-	cv::Mat color_data;
-	cv::cvtColor(yuy2src, color_data, CV_YUV2BGR);
-	ds_client->last_color_data_ = color_data;
+	ds_client->last_color_data_ = cv::Mat(kColorHeight, kColorWidth, CV_8UC3, (void*)(const uint8_t*)data.colorMap);
 }
 
 static void configureColorNode(DepthSense::ColorNode& node, std::shared_ptr<DSClient> client)
@@ -35,8 +32,7 @@ static void configureColorNode(DepthSense::ColorNode& node, std::shared_ptr<DSCl
 
     auto config = node.getConfiguration();
     config.frameFormat = DepthSense::FRAME_FORMAT_VGA;
-	config.compression = DepthSense::COMPRESSION_TYPE_YUY2;
-    config.powerLineFrequency = DepthSense::POWER_LINE_FREQUENCY_50HZ;
+	config.compression = DepthSense::COMPRESSION_TYPE_MJPEG;
     config.framerate = 25;
 
     node.setEnableColorMap(true);
