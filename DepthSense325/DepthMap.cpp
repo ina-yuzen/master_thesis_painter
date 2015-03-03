@@ -3,7 +3,7 @@
 #include "Context.h"
 #include "Recorder.h"
 
-#include "PinchWilson.h"
+#include "Algorithms.h"
 
 namespace mobamas{
 
@@ -33,7 +33,7 @@ void onNewDepthSample(DepthSense::DepthNode node, DepthSense::DepthNode::NewSamp
 	map.normalized = mat;
 
 	// Write processes here
-	DetectPinchPoint(context, map);
+	PinchErosion(context, map);
 
 	auto key = cv::waitKey(1);
 	if (key == 0x20)

@@ -1,4 +1,4 @@
-#include "PinchWilson.h"
+#include "Algorithms.h"
 
 #include "Context.h"
 #include "DepthMap.h"
@@ -10,7 +10,7 @@ const int kErosionSize = 3;
 
 namespace mobamas {
 
-std::vector<cv::Point> DetectPinchPoint(std::shared_ptr<Context> context, const DepthMap& data) {
+std::vector<cv::Point> PinchErosion(std::shared_ptr<Context> context, const DepthMap& data) {
 	cv::Mat dest;
 	cv::threshold(data.raw_mat, dest, kDepthThreshMM, 0x7fff, cv::THRESH_BINARY);
 	cv::Mat fill(data.h, data.w, CV_8UC1);
