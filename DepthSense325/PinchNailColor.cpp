@@ -38,6 +38,23 @@ void MaskSet::Add(CvSeq *contour) {
 		masks.push_back(mask);
 }
 
+struct ClassifiedRegion {
+	CvSeq* contour;
+	cv::Point center;
+	double area;
+
+	ClassifiedRegion(): contour(nullptr), center(), area(0) {}
+	ClassifiedRegion(CvSeq* contour);
+};
+
+ClassifiedRegion::ClassifiedRegion(CvSeq* contour) {
+	this->contour = contour;
+	area = cvContourArea(contour);
+	CvMoments mu;
+	cvMoments(contour, &mu);
+	center = cv::Point(static_cast<int>(mu.m10 / mu.m00), static_cast<int>(mu.m01 / mu.m00));
+}
+
 cv::Mat MapColorImage(const cv::Mat& src, const DepthMap& data, const cv::Mat& fill) {
 	cv::Mat dest(kDepthHeight, kDepthWidth, CV_8UC3, cv::Scalar(0,0,0));
 	auto uvs = data.data.uvMap;
@@ -76,8 +93,6 @@ std::vector<cv::Point> PinchNailColor(std::shared_ptr<Context> context, const De
 		}
 
 	}
-	std::vector<cv::Mat> contours;
-	std::vector<cv::Vec4i> hierarchy;
 	IplImage fillIpl = fill;
 	cvShowImage("threshold", &fillIpl);
 
@@ -92,7 +107,6 @@ std::vector<cv::Point> PinchNailColor(std::shared_ptr<Context> context, const De
 	cvInitFont(&font, CV_FONT_HERSHEY_PLAIN, 1, 1);
 	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 	while (cSeq != NULL) {
-		
 		if (cSeq->flags & CV_SEQ_FLAG_HOLE && cvContourArea(cSeq) > kMinHoleSize) {
 			char buf[128];
 			sprintf(buf, "%lf", cvContourArea(cSeq));
@@ -107,6 +121,9 @@ std::vector<cv::Point> PinchNailColor(std::shared_ptr<Context> context, const De
 
 	if (masks.masks.size() > 0) {
 		cv::Mat color = MapColorImage(context->ds_client->LastColorData(), data, fill);
+		cvShowImage("color", &((IplImage)context->ds_client->LastColorData()));
+		cv::Mat hls;
+		cvtColor(color, hls, CV_BGR2HLS);
 		cv::Mat debug_out = cv::Mat(kDepthHeight * masks.masks.size(), kDepthWidth, CV_8UC3, cv::Scalar(0, 0, 0));
 		int counts = masks.masks.size();
 		for (int i = 0; i < counts; i++) {
@@ -115,7 +132,7 @@ std::vector<cv::Point> PinchNailColor(std::shared_ptr<Context> context, const De
 			auto maskArea = cv::countNonZero(mask);
 
 			// create kmeans input samples
-			cv::Mat samples(maskArea, 3, CV_32F);
+			cv::Mat samples(maskArea, 2, CV_32F);
 			int sampleIdx = 0;
 			for (int y = 0; y < kDepthHeight; y++)
 			{
@@ -123,11 +140,9 @@ std::vector<cv::Point> PinchNailColor(std::shared_ptr<Context> context, const De
 				{
 					if (mask.at<uchar>(y, x) == 0)
 						continue;
-					auto v = color.at<cv::Vec3b>(y, x);
-					for (int k = 0; k < 3; k++)
-					{
-						samples.at<float>(sampleIdx, k) = v[k];
-					}
+					auto v = hls.at<cv::Vec3b>(y, x);
+					samples.at<float>(sampleIdx, 0) = v[0]; // hue
+					samples.at<float>(sampleIdx, 1) = v[2]; // saturation
 					sampleIdx++;
 				}
 			}
@@ -155,24 +170,23 @@ std::vector<cv::Point> PinchNailColor(std::shared_ptr<Context> context, const De
 			if (cv::countNonZero(label1) > maskArea / 2) {
 				cv::bitwise_not(label1, label1, mask);
 			}
-			// mark the mass center as pinch point
-			int sumx = 0, sumy = 0;
-			for (int y = 0; y < kDepthHeight; y++)
-			{
-				for (int x = 0; x < kDepthWidth; x++)
-				{
-					if (label1.at<uchar>(y, x) != 0) {
-						sumx += x;
-						sumy += y;
-						cv::circle(this_out, cv::Point(x, y), 1, cv::Scalar(0xcc, 0xcc, 0xcc));
-					}
-				}
+			CvMemStorage *storage = cvCreateMemStorage(0);
+			CvSeq *contour = NULL;
+			cvFindContours(&(IplImage(label1)), storage, &contour, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+			ClassifiedRegion dominant;
+			while (contour != NULL) {
+				ClassifiedRegion cur(contour);
+				if (dominant.area < cur.area)
+					dominant = cur;
+				contour = contour->h_next;
 			}
-			auto count = cv::countNonZero(label1);
-			auto mx = sumx / count, my = sumy / count;
-			found.push_back(cv::Point(mx, my));
-			cv::circle(this_out, cv::Point(mx, my), 4, cv::Scalar(0, 0, 0xff), -1);
-			cvCircle(writeTo, cvPoint(mx, my), 4, CV_RGB(0xff, 0, 0), -1);
+			if (dominant.area != 0 && dominant.area < maskArea / 3) {
+				found.push_back(dominant.center);
+				cvDrawContours(&((IplImage)this_out), dominant.contour, CV_RGB(0xcc, 0xcc, 0xcc), CV_RGB(0xcc, 0xcc, 0xcc), 0);
+				cv::circle(this_out, dominant.center, 4, cv::Scalar(0, 0, 0xff), -1);
+				cvCircle(writeTo, dominant.center, 4, CV_RGB(0xff, 0, 0), -1);
+			}
+			cvReleaseMemStorage(&storage);
 		}
 		cvShowImage("masked", &((IplImage)debug_out));
 	}
