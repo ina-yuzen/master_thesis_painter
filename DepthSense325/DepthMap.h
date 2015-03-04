@@ -6,7 +6,7 @@
 
 namespace mobamas {
 
-const int kSaturatedDepth = 32001;
+const int kSaturatedDepth = 32000;
 
 struct Context;
 
@@ -14,7 +14,6 @@ struct DepthMap {
 	int32_t w, h;
 	DepthSense::DepthNode::NewSampleReceivedData data;
 	cv::Mat raw_mat;
-	cv::Mat foreground;
 	cv::Mat normalized;
 };
 
