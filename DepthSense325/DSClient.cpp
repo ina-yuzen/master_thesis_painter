@@ -38,6 +38,7 @@ static void configureColorNode(DepthSense::ColorNode& node, std::shared_ptr<DSCl
     config.framerate = 25;
 
     node.setEnableColorMap(true);
+	node.setWhiteBalanceAuto(false);
 
 	node.setConfiguration(config);
 }
