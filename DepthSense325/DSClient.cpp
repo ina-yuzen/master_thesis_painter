@@ -13,10 +13,12 @@ static void configureDepthNode(DepthSense::DepthNode node,
     config.framerate = 25;
     config.mode = DepthSense::DepthNode::CAMERA_MODE_CLOSE_MODE;
     config.saturation = true;
-	node.setConfiguration(config);
 
 	node.setEnableVertices(true);
 	node.setEnableDepthMap(true);
+	node.setEnableUvMap(true);
+
+	node.setConfiguration(config);
 }
 
 // New color sample event handler

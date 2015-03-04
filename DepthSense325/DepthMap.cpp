@@ -31,9 +31,10 @@ void onNewDepthSample(DepthSense::DepthNode node, DepthSense::DepthNode::NewSamp
 
 	map.raw_mat = raw;
 	map.normalized = mat;
+	map.data = data;
 
 	// Write processes here
-	PinchErosion(context, map);
+	PinchNailColor(context, map);
 
 	auto key = cv::waitKey(1);
 	if (key == 0x20)
