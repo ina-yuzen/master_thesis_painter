@@ -28,6 +28,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Background.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
     <ClCompile Include="DepthMap.cpp" />
     <ClCompile Include="DSClient.cpp" />
@@ -39,6 +40,7 @@
     <ClCompile Include="Recorder.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Background.h" />
     <ClInclude Include="Context.h" />
     <ClInclude Include="DepthMap.h" />
     <ClInclude Include="DSClient.h" />
@@ -126,6 +128,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>C:\Program Files\SoftKinetic\DepthSenseSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level2</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\Program Files\SoftKinetic\DepthSenseSDK\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

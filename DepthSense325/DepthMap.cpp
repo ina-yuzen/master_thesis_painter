@@ -1,5 +1,6 @@
 #include "DepthMap.h"
 
+#include "Background.h"
 #include "Context.h"
 #include "Recorder.h"
 
@@ -32,13 +33,19 @@ void onNewDepthSample(DepthSense::DepthNode node, DepthSense::DepthNode::NewSamp
 	map.raw_mat = raw;
 	map.normalized = mat;
 	map.data = data;
+	if (context->background->Calibrate(raw)) {
+		map.foreground = context->background->EliminateBackground(raw);
+		cvShowImage("foreground", &((IplImage)map.foreground));
+	}
 
 	// Write processes here
 	PinchNailColor(context, map);
 
 	auto key = cv::waitKey(1);
-	if (key == 0x20)
+	if (key == 0x20) // space
 		context->recorder->toggleSampleImage();
+	if (key == 13) // enter
+		context->background->Restart();
 }
 
 }
