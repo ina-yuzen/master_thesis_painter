@@ -3,7 +3,9 @@
 namespace mobamas {
 
 EditorApp::EditorApp(PolycodeView *view): EventHandler(), left_clicking_(false) {
-	core_ = new POLYCODE_CORE(view, 640, 480, false, true, 0, 0, 30);
+	core_ = new POLYCODE_CORE(view, kWinWidth, kWinHeight, false, true, 0, 0, 90);
+
+	core_->enableMouse(false);
 
 	auto rm = Polycode::CoreServices::getInstance()->getResourceManager();
 	rm->addArchive("Resources/default.pak");
@@ -26,6 +28,8 @@ EditorApp::EditorApp(PolycodeView *view): EventHandler(), left_clicking_(false) 
 	cam->setPosition(5, 5, 5);
 	cam->lookAt(Polycode::Vector3(0, 1, 0));
 
+	picker_ = std::unique_ptr<ColorPicker>(new ColorPicker());
+		
 	auto input = core_->getInput();
 	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
 	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
@@ -90,13 +94,13 @@ static int Interpolate(TP start, TP end, int y) {
 	return start.first * (1 - ratio) + end.first * ratio;
 }
 
-static void FillTexture(Polycode::SceneMesh *mesh, int iidx) {
+static void FillTexture(Polycode::SceneMesh *mesh, int iidx, Polycode::Color color) {
 	std::vector<TP> region;
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
 	for (int off = 0; off < 3; off ++) {
 		auto coord = mesh->getMesh()->getVertexTexCoord(mesh->getMesh()->indexArray.data[iidx + off]);
-		region.push_back(TP(width * coord.x, height * coord.y));
+		region.push_back(TP(static_cast<int>(width * coord.x), static_cast<int>(height * coord.y)));
 	}
 	std::sort(region.begin(), region.end(), [](TP l, TP r) { return l.second < r.second; });
 	auto buffer = texture->getTextureData();
@@ -113,9 +117,10 @@ static void FillTexture(Polycode::SceneMesh *mesh, int iidx) {
 		}
 		for (int x = x1; x < x2; x ++) {
 			int i = y * width + x;
-			buffer[i * 4    ] = 0xff;
-			buffer[i * 4 + 1] = 0;
-			buffer[i * 4 + 2] = 0;
+			unsigned int rgba = color.getUint();
+			buffer[i * 4    ] = rgba & 0xff;
+			buffer[i * 4 + 1] = (rgba >> 8) & 0xff;
+			buffer[i * 4 + 2] = (rgba >> 16) & 0xff;
 			buffer[i * 4 + 3] = 0xff;
 		}
 	}
@@ -134,7 +139,7 @@ void EditorApp::handleEvent(Event *e) {
 		auto idx = FindIntersectionPolygon(mesh_, ray);
 		if (idx == -1)
 			return;
-		FillTexture(mesh_, idx);
+		FillTexture(mesh_, idx, picker_->current_color());
 	};
 
 	switch (e->getEventCode()) {
