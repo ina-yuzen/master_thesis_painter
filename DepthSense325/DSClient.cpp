@@ -95,6 +95,10 @@ void DSClient::Run() {
 	context_.stopNodes();
 }
 
+void DSClient::Quit() {
+	context_.quit();
+}
+
 DSClient::~DSClient() {
     if (color_.isSet()) context_.unregisterNode(color_);
     if (depth_.isSet()) context_.unregisterNode(depth_);

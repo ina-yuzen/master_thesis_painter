@@ -21,6 +21,7 @@ public:
 	~DSClient();
 	bool Prepare(std::shared_ptr<Context> context, DepthCallback handlerFunc);
 	void Run();
+	void Quit();
 	cv::Mat LastColorData() { return last_color_data_; } 
 
 private:
