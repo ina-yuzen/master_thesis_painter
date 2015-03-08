@@ -1,4 +1,6 @@
 #include "EditorApp.h"
+
+#include "CameraRotation.h"
 #include "ModelPainter.h"
 
 namespace mobamas {
@@ -25,11 +27,8 @@ EditorApp::EditorApp(PolycodeView *view) {
 		skel->getBone(idx)->disableAnimation = true;
 	}
 
-	auto cam = scene->getDefaultCamera();
-	cam->setPosition(5, 5, 5);
-	cam->lookAt(Polycode::Vector3(0, 1, 0));
-
 	painter_.reset(new ModelPainter(scene, mesh_));
+	rotation_.reset(new CameraRotation(scene));
 		
 	auto input = core_->getInput();
 }

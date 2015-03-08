@@ -28,12 +28,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CameraRotation.cpp" />
     <ClCompile Include="ColorPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
     <ClCompile Include="DepthMap.cpp" />
     <ClCompile Include="DSClient.cpp" />
     <ClCompile Include="LibGroundCalibration\GPGesutureRecognition.cpp" />
     <ClCompile Include="LibGroundCalibration\GroundPlaneCalibration.cpp" />
+    <ClCompile Include="ModelPainter.cpp" />
     <ClCompile Include="OmniTouch.cpp" />
     <ClCompile Include="PinchErosion.cpp" />
     <ClCompile Include="PinchNailColor.cpp" />
@@ -41,12 +43,14 @@
     <ClCompile Include="EditorApp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CameraRotation.h" />
     <ClInclude Include="Context.h" />
     <ClInclude Include="DepthMap.h" />
     <ClInclude Include="DSClient.h" />
     <ClInclude Include="Algorithms.h" />
     <ClInclude Include="EditorApp.h" />
     <ClInclude Include="ColorPicker.h" />
+    <ClInclude Include="ModelPainter.h" />
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="LibGroundCalibration\GPGesutureRecognition.h" />
     <ClInclude Include="LibGroundCalibration\GroundCalibrationConst.h" />
