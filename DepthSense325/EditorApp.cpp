@@ -1,6 +1,7 @@
 #include "EditorApp.h"
 
 #include "CameraRotation.h"
+#include "BoneManipulation.h"
 #include "ModelPainter.h"
 
 namespace mobamas {
@@ -27,6 +28,7 @@ EditorApp::EditorApp(PolycodeView *view) {
 		skel->getBone(idx)->disableAnimation = true;
 	}
 
+	bone_manipulation_.reset(new BoneManipulation(scene, mesh_));
 	painter_.reset(new ModelPainter(scene, mesh_));
 	rotation_.reset(new CameraRotation(scene));
 		
@@ -42,6 +44,7 @@ EditorApp::~EditorApp() {
 
 bool EditorApp::Update() {
 	auto ticks = core_->getTicks();
+	bone_manipulation_->Update();
 	//mesh_->getSkeleton()->getBone(0)->setPosition(0, sin(ticks * 0.1), 0);
 	return core_->updateAndRender();
 }

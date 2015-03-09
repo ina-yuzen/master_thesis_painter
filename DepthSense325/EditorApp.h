@@ -9,6 +9,7 @@ const int kWinHeight = 480;
 const int kWinWidth = 640;
 
 class CameraRotation;
+class BoneManipulation;
 class ModelPainter;
 
 class EditorApp {
@@ -21,6 +22,7 @@ private:
 	Polycode::Core *core_;
 	Polycode::SceneMesh *mesh_;
 	std::unique_ptr<CameraRotation> rotation_;
+	std::unique_ptr<BoneManipulation> bone_manipulation_;
 	std::unique_ptr<ModelPainter> painter_;
 };
 
