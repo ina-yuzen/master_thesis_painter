@@ -53,6 +53,7 @@
     <ClInclude Include="EditorApp.h" />
     <ClInclude Include="ColorPicker.h" />
     <ClInclude Include="ModelPainter.h" />
+    <ClInclude Include="OutputDebugStringBuf.h" />
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="LibGroundCalibration\GPGesutureRecognition.h" />
     <ClInclude Include="LibGroundCalibration\GroundCalibrationConst.h" />

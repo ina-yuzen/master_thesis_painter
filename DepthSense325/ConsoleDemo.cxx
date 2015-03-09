@@ -5,6 +5,10 @@
 #include "OmniTouch.h"
 #include "Recorder.h"
 
+#ifndef NDEBUG
+#include "OutputDebugStringBuf.h"
+#endif
+
 DWORD WINAPI RunDepthSense(LPVOID lpParam) {
 	auto context = (mobamas::Context*)lpParam;
 	context->ds_client->Run();
@@ -12,6 +16,20 @@ DWORD WINAPI RunDepthSense(LPVOID lpParam) {
 }
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+#ifndef NDEBUG
+#ifdef _WIN32
+	static OutputDebugStringBuf<char> charDebugOutput;
+	std::cout.rdbuf(&charDebugOutput);
+	std::cerr.rdbuf(&charDebugOutput);
+	std::clog.rdbuf(&charDebugOutput);
+		
+	static OutputDebugStringBuf<wchar_t> wcharDebugOutput;
+	std::wcout.rdbuf(&wcharDebugOutput);
+	std::wcerr.rdbuf(&wcharDebugOutput);
+	std::wclog.rdbuf(&wcharDebugOutput);
+#endif
+#endif
+
 	auto client = mobamas::DSClient::create();
 	auto context = std::make_shared<mobamas::Context>();
 	context->ds_client = client;
