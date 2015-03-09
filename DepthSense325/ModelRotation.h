@@ -4,17 +4,14 @@
 
 namespace mobamas {
 
-class CameraRotation: Polycode::EventHandler {
+class ModelRotation: Polycode::EventHandler {
 public:
-	CameraRotation(Polycode::Scene *scene);
+	ModelRotation(Polycode::SceneMesh *mesh_);
 	void handleEvent(Polycode::Event *e) override;
 
 private:
-	void ApplyAngle();
-
-	Polycode::Scene *scene_;
+	Polycode::SceneMesh *mesh_;
 	Polycode::Vector2 mouse_prev_;
-	Polycode::Vector2 angle_;
 	bool moving_;
 };
 

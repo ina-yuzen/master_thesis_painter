@@ -1,18 +1,15 @@
-#include "CameraRotation.h"
+#include "ModelRotation.h"
 
 namespace mobamas {
 
 const int kDistance = sqrt(27.0);
-const double kSensitivity = 2 * PI / 320;
+const double kSensitivity = 1;
 
-CameraRotation::CameraRotation(Polycode::Scene *scene): 
+ModelRotation::ModelRotation(Polycode::SceneMesh *mesh): 
 	EventHandler(), 
-	scene_(scene),
-	angle_(PI / 4, PI / 4),
+	mesh_(mesh),
 	moving_(false)
 {
-	ApplyAngle();
-
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
 	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
@@ -20,19 +17,9 @@ CameraRotation::CameraRotation(Polycode::Scene *scene):
 	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
 }
 
-void CameraRotation::ApplyAngle() {
-	auto cam = scene_->getActiveCamera();
-	double horizontal = kDistance * cos(angle_.y);
-	cam->setPosition(
-		horizontal * cos(angle_.x),
-		kDistance * sin(angle_.y),
-		horizontal * sin(angle_.x));
-	cam->lookAt(Polycode::Vector3(0, 1, 0));
-}
-
 const int kMouseRightButtonCode = 1;
 
-void CameraRotation::handleEvent(Polycode::Event *e) {
+void ModelRotation::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
 
 	auto set_click_state = [&](bool new_val) {
@@ -48,8 +35,8 @@ void CameraRotation::handleEvent(Polycode::Event *e) {
 		if (moving_) {
 			auto new_pos = ((InputEvent*)e)->mousePosition;
 			auto diff = new_pos - mouse_prev_;
-			angle_ += diff * kSensitivity;
-			ApplyAngle();
+			mesh_->Yaw(diff.x * kSensitivity);
+			mesh_->Pitch(diff.y * kSensitivity);
 			mouse_prev_ = new_pos;
 		}
 		break;

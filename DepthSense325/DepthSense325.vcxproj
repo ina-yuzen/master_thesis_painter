@@ -28,8 +28,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CameraRotation.cpp" />
     <ClCompile Include="BoneManipulation.cpp" />
+    <ClCompile Include="ModelRotation.cpp" />
     <ClCompile Include="ColorPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
     <ClCompile Include="DepthMap.cpp" />
@@ -44,8 +44,8 @@
     <ClCompile Include="EditorApp.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CameraRotation.h" />
     <ClInclude Include="BoneManipulation.h" />
+    <ClInclude Include="ModelRotation.h" />
     <ClInclude Include="Context.h" />
     <ClInclude Include="DepthMap.h" />
     <ClInclude Include="DSClient.h" />

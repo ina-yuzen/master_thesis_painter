@@ -8,8 +8,8 @@ namespace mobamas {
 const int kWinHeight = 480;
 const int kWinWidth = 640;
 
-class CameraRotation;
 class BoneManipulation;
+class ModelRotation;
 class ModelPainter;
 
 class EditorApp {
@@ -21,8 +21,8 @@ public:
 private:
 	Polycode::Core *core_;
 	Polycode::SceneMesh *mesh_;
-	std::unique_ptr<CameraRotation> rotation_;
 	std::unique_ptr<BoneManipulation> bone_manipulation_;
+	std::unique_ptr<ModelRotation> rotation_;
 	std::unique_ptr<ModelPainter> painter_;
 };
 
