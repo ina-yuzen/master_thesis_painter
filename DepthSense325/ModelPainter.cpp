@@ -1,12 +1,15 @@
 #include "ModelPainter.h"
 #include "ColorPicker.h"
 
+#include <opencv2\opencv.hpp>
+
 namespace mobamas {
 
 ModelPainter::ModelPainter(Polycode::Scene *scene, Polycode::SceneMesh *mesh) :
 	EventHandler(),
 	scene_(scene),
 	mesh_(mesh),
+	prev_tc_(),
 	left_clicking_(false)
 {
 	picker_.reset(new ColorPicker());
@@ -121,7 +124,7 @@ static int Interpolate(const TP& start, const TP& end, int y) {
 
 const double kPenSize = 500;
 
-static void FillTexture(Polycode::SceneMesh *mesh, const Intersection& intersection, const Polycode::Color& color) {
+static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector2* prev_tc, const Intersection& intersection, const Polycode::Color& color) {
 	auto raw = mesh->getMesh();
 	auto idx0 = intersection.first_vertex_index;
 	auto tc0 = raw->getVertexTexCoordAtIndex(idx0);
@@ -132,32 +135,26 @@ static void FillTexture(Polycode::SceneMesh *mesh, const Intersection& intersect
 	auto v2 = raw->getVertexPositionAtIndex(idx0+2);
 	auto tc = (tc1 - tc0) * intersection.s + (tc2 - tc0) * intersection.t + tc0;
 
+	if (prev_tc == nullptr)
+		return tc;
+
 	auto carea = (tc1-tc0).crossProduct(tc2-tc0);
 	auto varea = (v1-v0).crossProduct(v2-v0).length();
-	int normalized_pen_size = kPenSize * carea / varea;
+	int normalized_pen_size = std::max(round(kPenSize * carea / varea), 1);
 
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
 
 	auto buffer = texture->getTextureData();
 	unsigned int rgba = color.getUint();
-	auto cx = width * tc.x, cy = height * tc.y;
-	for (int dy = -normalized_pen_size; dy <= normalized_pen_size; dy ++) {
-		int y = cy + dy;
-		if (y < 0 || y >= height)
-			continue;
-		for (int dx = - normalized_pen_size + abs(dy); dx <= normalized_pen_size - abs(dy); dx++) {
-			int x = cx + dx;
-			if (x < 0 || x >= width)
-				continue;
-			int i = y * width + x;
-			buffer[i * 4    ] = rgba & 0xff;
-			buffer[i * 4 + 1] = (rgba >> 8) & 0xff;
-			buffer[i * 4 + 2] = (rgba >> 16) & 0xff;
-			buffer[i * 4 + 3] = 0xff;
-		}
+	auto start = cv::Point(static_cast<int>(prev_tc->x * width), static_cast<int>(prev_tc->y * height));
+	auto end = cv::Point(static_cast<int>(tc.x * width), static_cast<int>(tc.y * height));
+	if (sqrt((end - start).dot(end - start)) < normalized_pen_size * 5) {
+		cv::Mat tex_mat(height, width, CV_8UC4, buffer);
+		cv::line(tex_mat, start, end, cv::Scalar(rgba & 0xff, (rgba >> 8) & 0xff, (rgba >> 16) & 0xff, 0xff), normalized_pen_size);
+		texture->recreateFromImageData();
 	}
-	texture->recreateFromImageData();
+	return tc;
 }
 
 const int kMouseLeftButtonCode = 0;
@@ -171,7 +168,7 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
 		auto intersection = FindIntersectionPolygon(mesh_, ray);
 		if (intersection.found) {
-			FillTexture(mesh_, intersection, picker_->current_color());
+			prev_tc_.reset(new Polycode::Vector2(FillTexture(mesh_, prev_tc_.get(), intersection, picker_->current_color())));
 		}
 	};
 
@@ -179,6 +176,7 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		InputEvent *ie = (InputEvent*)e;
 		if (ie->mouseButton == kMouseLeftButtonCode)
 			left_clicking_ = new_val;
+		prev_tc_.release();
 	};
 
 	switch (e->getEventCode()) {
@@ -187,8 +185,8 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 			paint();
 		break;
 	case InputEvent::EVENT_MOUSEDOWN:
-		paint();
 		set_click_state(true);
+		paint();
 		break;
 	case InputEvent::EVENT_MOUSEUP:
 		set_click_state(false);

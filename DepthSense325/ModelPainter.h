@@ -14,6 +14,7 @@ public:
 private:
 	Polycode::Scene *scene_;
 	Polycode::SceneMesh *mesh_;
+	std::unique_ptr<Polycode::Vector2> prev_tc_;
 	std::unique_ptr<ColorPicker> picker_;
 	bool left_clicking_;
 };
