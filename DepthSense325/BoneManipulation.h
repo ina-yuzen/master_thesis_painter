@@ -1,7 +1,14 @@
 #pragma once
 #include <Polycode.h>
+#include <vector>
 
 namespace mobamas {
+
+struct BoneHandle {
+	Polycode::Bone* bone;
+	Polycode::SceneMesh *marker;
+	unsigned int bone_id;
+};
 
 class BoneManipulation: public Polycode::EventHandler {
 public:
@@ -12,7 +19,9 @@ public:
 private:
 	Polycode::Scene *scene_;
 	Polycode::SceneMesh *mesh_;
-	bool moving_;
+	std::vector<BoneHandle> handles_;
+	BoneHandle* current_target_;
+	Polycode::Vector2 mouse_prev_;
 };
 
 }

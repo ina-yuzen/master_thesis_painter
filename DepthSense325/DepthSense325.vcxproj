@@ -42,9 +42,11 @@
     <ClCompile Include="PinchNailColor.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="EditorApp.cpp" />
+    <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BoneManipulation.h" />
+    <ClInclude Include="Util.h" />
     <ClInclude Include="ModelRotation.h" />
     <ClInclude Include="Context.h" />
     <ClInclude Include="DepthMap.h" />

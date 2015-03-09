@@ -18,15 +18,20 @@ EditorApp::EditorApp(PolycodeView *view) {
 	auto scene = new Polycode::Scene();
 	mesh_ = new SceneMesh("Resources/dummy.mesh");
 	mesh_->loadTexture("Resources/dummy.png");
-	mesh_->overlayWireframe = true;
 	scene->addEntity(mesh_);
 
 	mesh_->loadSkeleton("Resources/dummy.skeleton");
-	auto skel = mesh_->getSkeleton();
-	for (int idx = 0; idx < skel->getNumBones(); idx++)
+	auto skeleton = mesh_->getSkeleton();
+	Polycode::Bone* root = nullptr;
+	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
 	{
-		skel->getBone(idx)->disableAnimation = true;
+		auto b = skeleton->getBone(bidx);
+		if (b->getParentBone() == nullptr) {
+			root = b;
+			break;
+		}
 	}
+	root->setPositionY(root->getPosition().y - 1); // adjust center to rotate
 
 	auto cam = 	scene->getActiveCamera();
 	cam->setPosition(3, 3, 3);

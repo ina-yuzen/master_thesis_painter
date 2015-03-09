@@ -1,7 +1,9 @@
 #include "ModelPainter.h"
-#include "ColorPicker.h"
 
 #include <opencv2\opencv.hpp>
+
+#include "ColorPicker.h"
+#include "Util.h"
 
 namespace mobamas {
 
@@ -79,24 +81,7 @@ static Intersection FindIntersectionPolygon(Polycode::SceneMesh *mesh, const Pol
 	best.found = false;
 	double distance = 1e10;
 
-	std::vector<Polycode::Vector3> adjusted_points;
-	auto mesh_transform = mesh->getTransformMatrix();
-	for (int vidx=0; vidx < raw->vertexPositionArray.data.size()/3; vidx ++) {
-		auto rest_vert = Polycode::Vector3(raw->vertexPositionArray.data[vidx*3],
-			raw->vertexPositionArray.data[vidx*3+1],
-			raw->vertexPositionArray.data[vidx*3+2]);
-		Polycode::Vector3 real_pos;
-		for (int b = 0; b < 4; b++)
-		{
-			auto bidx = vidx * 4 + b;
-			auto weight = raw->vertexBoneWeightArray.data[bidx];
-			if (weight > 0.0) {
-				auto bone = mesh->getSkeleton()->getBone(raw->vertexBoneIndexArray.data[bidx]);
-				real_pos += bone->finalMatrix * rest_vert * weight;
-			}
-		}
-		adjusted_points.push_back(mesh_transform * real_pos);
-	}
+	std::vector<Polycode::Vector3> adjusted_points = ActualVertexPositions(mesh);
 
 	int step = raw->getIndexGroupSize();
 	for (int ii = 0; ii < raw->getIndexCount(); ii += step) {
