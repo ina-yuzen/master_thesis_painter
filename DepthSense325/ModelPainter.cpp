@@ -125,7 +125,7 @@ static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector
 
 	auto carea = (tc1-tc0).crossProduct(tc2-tc0);
 	auto varea = (v1-v0).crossProduct(v2-v0).length();
-	int normalized_pen_size = std::max(round(kPenSize * carea / varea), 1);
+	int normalized_pen_size = std::max(round(kPenSize * carea / varea), 1.0);
 
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
