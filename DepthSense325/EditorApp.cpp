@@ -1,12 +1,13 @@
 #include "EditorApp.h"
 
+#include "BackgroundImage.h"
 #include "BoneManipulation.h"
 #include "ModelRotation.h"
 #include "ModelPainter.h"
 
 namespace mobamas {
 
-EditorApp::EditorApp(PolycodeView *view) {
+EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	core_ = new POLYCODE_CORE(view, kWinWidth, kWinHeight, false, true, 0, 0, 90);
 
 	core_->enableMouse(false);
@@ -15,10 +16,13 @@ EditorApp::EditorApp(PolycodeView *view) {
 	rm->addArchive("Resources/default.pak");
 	rm->addDirResource("default", false);
 
+	background_image_.reset(new BackgroundImage(context));
+	
 	auto scene = new Polycode::Scene();
 	mesh_ = new SceneMesh("Resources/dummy.mesh");
 	mesh_->loadTexture("Resources/dummy.png");
 	scene->addEntity(mesh_);
+	scene->useClearColor = false;
 
 	mesh_->loadSkeleton("Resources/dummy.skeleton");
 	auto skeleton = mesh_->getSkeleton();
@@ -40,8 +44,6 @@ EditorApp::EditorApp(PolycodeView *view) {
 	bone_manipulation_.reset(new BoneManipulation(scene, mesh_));
 	painter_.reset(new ModelPainter(scene, mesh_));
 	rotation_.reset(new ModelRotation(mesh_));
-		
-	auto input = core_->getInput();
 }
 
 EditorApp::~EditorApp() {
@@ -52,9 +54,8 @@ EditorApp::~EditorApp() {
 }
 
 bool EditorApp::Update() {
-	auto ticks = core_->getTicks();
+	background_image_->Update();
 	bone_manipulation_->Update();
-	//mesh_->getSkeleton()->getBone(0)->setPosition(0, sin(ticks * 0.1), 0);
 	return core_->updateAndRender();
 }
 

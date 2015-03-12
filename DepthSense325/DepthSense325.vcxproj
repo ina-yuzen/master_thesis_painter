@@ -28,6 +28,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BackgroundImage.cpp" />
     <ClCompile Include="BoneManipulation.cpp" />
     <ClCompile Include="ModelRotation.cpp" />
     <ClCompile Include="ColorPicker.cpp" />
@@ -45,7 +46,9 @@
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BackgroundImage.h" />
     <ClInclude Include="BoneManipulation.h" />
+    <ClInclude Include="CameraEventListeners.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="ModelRotation.h" />
     <ClInclude Include="Context.h" />

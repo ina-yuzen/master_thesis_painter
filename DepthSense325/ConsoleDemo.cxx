@@ -40,7 +40,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	}
 
 	auto view = new Polycode::PolycodeView(hInstance, nCmdShow, L"MOBAM@S");
-	mobamas::EditorApp app(view);
+	mobamas::EditorApp app(view, context);
 
 	DWORD threadId;
 	auto hThread = CreateThread(NULL, 0, RunDepthSense, context.get(), 0, &threadId);
