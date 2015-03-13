@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "EditorApp.h"
 #include "Util.h"
 
 namespace mobamas {
@@ -55,12 +56,6 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
 }
 
-static bool IsMarkerIntersect(const Polycode::Ray& ray, const BoneHandle& handle) {
-	auto center = handle.marker->getPosition();
-	auto point = ray.planeIntersectPoint(ray.direction, center);
-	return point.distance(center) < 0.1;
-}
-
 const int kMouseMiddleButtonCode = 2;
 const double kSensitivity = 1;
 
@@ -73,13 +68,7 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 			return;
 		mouse_prev_ = ie->getMousePosition();
 		if (select) {
-			auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), ie->getMousePosition());
-			for (auto &handle: handles_) {
-				if (IsMarkerIntersect(ray, handle)) {
-					current_target_ = &handle;
-					return;
-				}
-			}
+			current_target_ = SelectHandleByWindowCoord(ie->getMousePosition());
 		} else {
 			current_target_ = nullptr;
 		}
@@ -134,5 +123,59 @@ void BoneManipulation::Update() {
 		handle.marker->setPosition(bone_centers[handle.bone_id]);
 	}
 }
+
+void BoneManipulation::OnPinchStart(cv::Point3f point) {
+	pinch_prev_ = point;
+	Polycode::Vector2 on_window(kWinWidth * point.x, kWinHeight * point.y);
+	current_target_ = SelectHandleByWindowCoord(on_window, 1.0);
+	if (current_target_) {
+		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
+	}
+}
+
+static Polycode::Scene *debug_scene = nullptr;
+static Polycode::ScreenEntity* debug_point = nullptr;
+void BoneManipulation::OnPinchMove(cv::Point3f point) {
+	if (debug_point == nullptr) {
+		debug_scene = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
+		debug_point = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 3, 3, 10);
+		debug_scene->addEntity(debug_point);
+	}
+	debug_point->setPositionX(kWinWidth * point.x);
+	debug_point->setPositionY(kWinHeight * point.y);
+	if (current_target_ == nullptr)
+		return;
+
+	auto diff_xy = Polycode::Vector2(point.x - pinch_prev_.x, point.y - pinch_prev_.y).length();
+	auto diff_z = point.z - pinch_prev_.z;
+	current_target_->bone->Yaw(diff_z * 1);
+	current_target_->bone->Pitch(diff_xy * 1);
+	current_target_->bone->rebuildFinalMatrix();
+	pinch_prev_ = point;
+}
+
+void BoneManipulation::OnPinchEnd() {
+	if (current_target_) {
+		current_target_->marker->setColor(0.8, 0.5, 0.5, 0.8);
+		current_target_ = nullptr;
+	}
+}
+
+BoneHandle* BoneManipulation::SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error) {
+	auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), point);
+	double min_error = 1e10;
+	BoneHandle* selected = nullptr;
+	for (auto &handle : handles_) {
+		auto center = handle.marker->getPosition();
+		auto point = ray.planeIntersectPoint(ray.direction, center);
+		auto distance = point.distance(center);
+		if (distance < std::min(allowed_error, min_error)) {
+			min_error = distance;
+			selected = &handle;
+		}
+	}
+	return selected;
+}
+
 
 }

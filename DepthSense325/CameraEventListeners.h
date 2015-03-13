@@ -5,9 +5,11 @@ namespace mobamas {
 
 class PinchEventListener {
 public:
-	void OnPinchStart(cv::Point3f point);
-	void OnPinchMove(cv::Point3f point);
-	void OnPinchEnd(cv::Point3f point);
+	virtual ~PinchEventListener() {}
+
+	virtual void OnPinchStart(cv::Point3f point) = 0;
+	virtual void OnPinchMove(cv::Point3f point) = 0;
+	virtual void OnPinchEnd() = 0;
 };
 
 }

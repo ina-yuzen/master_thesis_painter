@@ -2,6 +2,7 @@
 
 #include "BackgroundImage.h"
 #include "BoneManipulation.h"
+#include "Context.h"
 #include "ModelRotation.h"
 #include "ModelPainter.h"
 
@@ -44,6 +45,8 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	bone_manipulation_.reset(new BoneManipulation(scene, mesh_));
 	painter_.reset(new ModelPainter(scene, mesh_));
 	rotation_.reset(new ModelRotation(mesh_));
+
+	context->pinch_listeners = bone_manipulation_;
 }
 
 EditorApp::~EditorApp() {

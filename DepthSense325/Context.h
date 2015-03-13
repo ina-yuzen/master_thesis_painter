@@ -11,6 +11,7 @@ class PinchEventListener;
 struct Context {
 	std::shared_ptr<DSClient> ds_client;
 	std::unique_ptr<Recorder> recorder;
-	std::vector<std::weak_ptr<PinchEventListener>> pinch_listeners;
+	std::weak_ptr<PinchEventListener> pinch_listeners;
+	std::vector<cv::Point> prev_pinches;
 };
 }
