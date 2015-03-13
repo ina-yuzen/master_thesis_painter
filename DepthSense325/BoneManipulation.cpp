@@ -14,6 +14,8 @@ const std::vector<std::string> kManipulatableBones = ([] {
 	std::vector<std::string> v;
 	v.push_back("Bone.001_R.001");
 	v.push_back("Bone.001_L.001");
+	v.push_back("Bone_L.002");
+	v.push_back("Bone_R.002");
 	return v;
 })();
 
