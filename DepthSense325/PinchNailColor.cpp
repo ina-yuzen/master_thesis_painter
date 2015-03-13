@@ -64,7 +64,7 @@ cv::Mat MapColorImage(const cv::Mat& src, const DepthMap& data, const cv::Mat& f
 		for (int x = 0; x < kDepthWidth; x++)
 		{
 			auto uv = uvs[y * kDepthWidth + x];
-			if (uv.u > -1e10 && uv.v > -1e10 && // invalid pixels
+			if (uv.u > 0.0 && uv.v > 0.0 && uv.u < 1.0 && uv.v < 1.0 &&
 				fill.at<uchar>(y, x) > 0) {
 				auto cx = static_cast<int>(uv.u * kColorWidth);
 				auto cy = static_cast<int>(uv.v * kColorHeight);
