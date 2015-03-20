@@ -1,7 +1,9 @@
 #include "DepthMap.h"
 
+#include "CameraEventListeners.h"
 #include "Context.h"
 #include "Recorder.h"
+#include "Option.h"
 
 #include "Algorithms.h"
 
@@ -34,11 +36,49 @@ void onNewDepthSample(DepthSense::DepthNode node, DepthSense::DepthNode::NewSamp
 	map.data = data;
 
 	// Write processes here
-	PinchNailColor(context, map);
+	auto founds = PinchNailColor(context, map);
+	NotifyPinchChange(context, map, founds);
 
 	auto key = cv::waitKey(1);
 	if (key == 0x20)
 		context->recorder->toggleSampleImage();
+}
+
+static Option<cv::Point3f> AbsolutePoint3D(const DepthMap& depth_map, const cv::Point& depth_point) {
+	auto uv_map = depth_map.data.uvMap;
+	int offset = depth_point.y * depth_map.w + depth_point.x;
+	assert(uv_map.size() > offset);
+	auto uv = uv_map[offset];
+	auto depth_mm = depth_map.raw_mat.at<int16_t>(depth_point);
+	if (uv.u > -1e10 && uv.v > -1e10 && depth_mm < kSaturatedDepth) {
+		return Option<cv::Point3f>(cv::Point3f(uv.u, uv.v, depth_mm));
+	}
+	else {
+		return Option<cv::Point3f>::None();
+	}
+}
+
+void NotifyPinchChange(std::shared_ptr<Context> context, const DepthMap& depth_map, const std::vector<cv::Point>& founds) {
+	auto listener = context->pinch_listeners.lock();
+	if (!listener)
+		return;
+	if (context->prev_pinches.empty()) {
+		if (!founds.empty()) {
+			auto p = AbsolutePoint3D(depth_map, founds.front());
+			if (p)
+				listener->OnPinchStart(*p);
+		}
+	}
+	else {
+		if (founds.empty()) 
+			listener->OnPinchEnd();
+		else {
+			auto p = AbsolutePoint3D(depth_map, founds.front());
+			if (p)
+				listener->OnPinchMove(*p);
+		}
+	}
+	context->prev_pinches.assign(founds.begin(), founds.end());
 }
 
 }
