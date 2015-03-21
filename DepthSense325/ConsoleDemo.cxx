@@ -35,22 +35,24 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	context->ds_client = client;
 	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
 
-	if (!client->Prepare(context, mobamas::onNewDepthSample)) {
-		return 1;
-	}
-
 	auto view = new Polycode::PolycodeView(hInstance, nCmdShow, L"MOBAM@S");
 	mobamas::EditorApp app(view, context);
 
 	DWORD threadId;
-	auto hThread = CreateThread(NULL, 0, RunDepthSense, context.get(), 0, &threadId);
-	if (hThread == NULL) {
-		OutputDebugString(L"Failed to start depth sense thread");
-		LPTSTR text = NULL;
-		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, GetLastError(), 0, text, MAX_PATH, 0);
-		OutputDebugString(text);
-		LocalFree(text);
-		return 3;
+	HANDLE hThread = NULL;
+	if (client->Prepare(context, mobamas::onNewDepthSample)) {
+		hThread = CreateThread(NULL, 0, RunDepthSense, context.get(), 0, &threadId);
+		if (hThread == NULL) {
+			OutputDebugString(L"Failed to start depth sense thread");
+			LPTSTR text = NULL;
+			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, GetLastError(), 0, text, MAX_PATH, 0);
+			OutputDebugString(text);
+			LocalFree(text);
+			return 3;
+		}
+	}
+	else {
+		MessageBox(NULL, L"DepthSense is not connected.", L"Insufficient", MB_ICONWARNING | MB_OK);
 	}
 
 	MSG Msg;
@@ -62,19 +64,21 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	} while(app.Update());
 
 	OutputDebugString(L"Shutting down...");
-	context->ds_client->Quit();
-	auto result = WaitForMultipleObjects(1, &hThread, TRUE, 1000);
-	switch (result) {
-	case WAIT_TIMEOUT:
-		OutputDebugString(L"BUG: WaitForMultipleObjects to join the depth sense thread timed out");
-		break;
-	case WAIT_FAILED:
-		OutputDebugString(L"WaitForMultipleObjects failed");
-		LPTSTR text = NULL;
-		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, GetLastError(), 0, text, MAX_PATH, 0);
-		OutputDebugString(text);
-		LocalFree(text);
-		break;
+	if (hThread != NULL) {
+		context->ds_client->Quit();
+		auto result = WaitForMultipleObjects(1, &hThread, TRUE, 1000);
+		switch (result) {
+		case WAIT_TIMEOUT:
+			OutputDebugString(L"BUG: WaitForMultipleObjects to join the depth sense thread timed out");
+			break;
+		case WAIT_FAILED:
+			OutputDebugString(L"WaitForMultipleObjects failed");
+			LPTSTR text = NULL;
+			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, GetLastError(), 0, text, MAX_PATH, 0);
+			OutputDebugString(text);
+			LocalFree(text);
+			break;
+		}
 	}
 	return Msg.wParam;
 }
