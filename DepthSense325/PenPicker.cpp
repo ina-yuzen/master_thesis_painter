@@ -58,6 +58,17 @@ PenPicker::PenPicker(): Polycode::EventHandler() {
 	}
 	current_size_ = 1;
 
+	auto stamps = std::vector < std::string > {"Resources\\stamp0_heart.png"};
+	for (int i = 0; i < stamps.size(); ++i)
+	{
+		auto plane = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_VPLANE, kSize, kSize);
+		plane->setPosition(kWinWidth - kSize * 2 - 20, kSize * i + 20);
+		plane->loadTexture(stamps[i]);
+		scene_->addChild(plane);
+		stamp_picks_.push_back(plane);
+	}
+	current_size_ = 1;
+
 	cursor_.reset(new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 10, 10, 10));
 	scene_->addChild(cursor_.get());
 	
@@ -72,20 +83,44 @@ bool IsClicking(const Polycode::Vector2& point, const Polycode::SceneEntity* obj
 		pos.y - kSize / 2 <= point.y && pos.y + kSize / 2 >= point.y);
 }
 
+void PenPicker::UpdateCursorStyle() {
+	if (current_brush_ == Brush::STAMP) {
+		cursor_->setPrimitiveOptions(Polycode::ScenePrimitive::TYPE_VPLANE, kSize, kSize);
+		cursor_->setTexture(current_stamp());
+		cursor_->setColor(1, 1, 1, 1);
+	}
+	else {
+		auto size = (current_size() + 1) * 5;
+		cursor_->setColor(current_color());
+		cursor_->setPrimitiveOptions(Polycode::ScenePrimitive::TYPE_CIRCLE, size, size, size);
+		cursor_->setTexture(nullptr);
+	}
+}
+
 void PenPicker::PickClicked(const Polycode::Vector2& point) {
 	auto root = scene_->rootEntity;
 	for (auto color_pick : color_picks_) {
 		if (IsClicking(point, color_pick)) {
+			current_brush_ = Brush::PEN;
 			current_color_ = color_pick->color;
-			cursor_->setColor(current_color_);
+			UpdateCursorStyle();
 			break;
 		}
 	}
 	for (auto size_pick: size_picks_) {
 		if (IsClicking(point, size_pick)) {
+			current_brush_ = Brush::PEN;
 			auto size = size_pick->getPrimitiveParameter1();
 			current_size_ = (int)(size / 5) - 1;
-			cursor_->setPrimitiveOptions(cursor_->getPrimitiveType(), size, size, size);
+			UpdateCursorStyle();
+			break;
+		}
+	}
+	for (auto pick: stamp_picks_) {
+		if (IsClicking(point, pick)) {
+			current_brush_ = Brush::STAMP;
+			current_stamp_ = pick->getTexture();
+			UpdateCursorStyle();
 			break;
 		}
 	}
