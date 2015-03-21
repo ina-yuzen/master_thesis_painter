@@ -30,7 +30,7 @@ const std::vector<Polycode::Color> PenPicker::kPalette = ([] {
 const int kMaxSizeStep = 4;
 
 const int kSize = 30;
-PenPicker::PenPicker(): Polycode::EventHandler() {
+PenPicker::PenPicker(): Polycode::EventHandler(), current_brush_(Brush::PEN) {
 	scene_ = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
 	scene_->getActiveCamera()->setOrthoSize(kWinWidth, kWinHeight);
 	scene_->useClearColor = false;

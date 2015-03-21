@@ -107,7 +107,8 @@ static int Interpolate(const TP& start, const TP& end, int y) {
 	return start.first * (1 - ratio) + end.first * ratio;
 }
 
-static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector2* prev_tc, const Intersection& intersection, const Polycode::Color& color, int pen_size) {
+const int kStampSize = 32;
+static Polycode::Vector2 PaintTexture(Polycode::SceneMesh *mesh, Polycode::Vector2* prev_tc, const Intersection& intersection, const std::unique_ptr<PenPicker>& picker) {
 	auto raw = mesh->getMesh();
 	auto idx0 = intersection.first_vertex_index;
 	auto tc0 = raw->getVertexTexCoordAtIndex(idx0);
@@ -118,25 +119,59 @@ static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector
 	auto v2 = raw->getVertexPositionAtIndex(idx0+2);
 	auto tc = (tc1 - tc0) * intersection.s + (tc2 - tc0) * intersection.t + tc0;
 
-	if (prev_tc == nullptr)
-		return tc;
-
-	auto carea = (tc1-tc0).crossProduct(tc2-tc0);
-	auto varea = (v1-v0).crossProduct(v2-v0).length();
-	int normalized_pen_size = std::max(round(500 * pen_size * carea / varea), 1.0);
-
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
-
 	auto buffer = texture->getTextureData();
-	unsigned int rgba = color.getUint();
-	auto start = cv::Point(static_cast<int>(prev_tc->x * width), static_cast<int>(prev_tc->y * height));
-	auto end = cv::Point(static_cast<int>(tc.x * width), static_cast<int>(tc.y * height));
-	if (sqrt((end - start).dot(end - start)) < normalized_pen_size * 5) {
-		cv::Mat tex_mat(height, width, CV_8UC4, buffer);
-		cv::line(tex_mat, start, end, cv::Scalar(rgba & 0xff, (rgba >> 8) & 0xff, (rgba >> 16) & 0xff, 0xff), normalized_pen_size);
-		texture->recreateFromImageData();
+	cv::Mat tex_mat(height, width, CV_8UC4, buffer);
+
+	auto TexPoint = [width, height](Polycode::Vector2 tc) {
+		return cv::Point(static_cast<int>(tc.x * width), static_cast<int>(tc.y * height));
+	};
+
+	switch (picker->current_brush()) {
+	case Brush::PEN:
+		if (prev_tc == nullptr)
+			return tc;
+		{
+			auto carea = (tc1 - tc0).crossProduct(tc2 - tc0);
+			auto varea = (v1 - v0).crossProduct(v2 - v0).length();
+			int normalized_pen_size = std::max(round(500 * picker->current_size() * carea / varea), 1.0);
+
+			unsigned int rgba = picker->current_color().getUint();
+			auto start = TexPoint(*prev_tc);
+			auto end = TexPoint(tc);
+			if (sqrt((end - start).dot(end - start)) < normalized_pen_size * 5) {
+				cv::line(tex_mat, start, end, cv::Scalar(rgba & 0xff, (rgba >> 8) & 0xff, (rgba >> 16) & 0xff, 0xff), normalized_pen_size);
+			}
+		}
+		break;
+	case Brush::STAMP:
+		if (prev_tc == nullptr || cv::norm(TexPoint(tc) - TexPoint(*prev_tc)) > kStampSize) {
+			auto center = cv::Point(static_cast<int>(tc.x * width), static_cast<int>(tc.y * height));
+			auto left_top = center - cv::Point(kStampSize / 2, kStampSize / 2);
+			cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4, picker->current_stamp()->getTextureData());
+			cv::Rect dest_rect(
+				std::max(left_top.x, 0),
+				std::max(left_top.y, 0),
+				std::min({ kStampSize, kStampSize + left_top.x, width - left_top.x }),
+				std::min({ kStampSize, kStampSize + left_top.y, height - left_top.y }));
+			cv::Mat dest_roi(tex_mat, dest_rect);
+			cv::Mat src_roi(stamp_mat, cv::Rect(
+				std::max(-left_top.x, 0),
+				std::max(-left_top.y, 0),
+				dest_rect.width,
+				dest_rect.height));
+			std::vector<cv::Mat> channels;
+			cv::split(src_roi, channels);
+			src_roi.copyTo(dest_roi, channels[3]);
+		}
+		else {
+			return *prev_tc;
+		}
+		break;
 	}
+	cv::imshow("win", tex_mat);
+	texture->recreateFromImageData();
 	return tc;
 }
 
@@ -151,7 +186,7 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
 		auto intersection = FindIntersectionPolygon(mesh_, ray);
 		if (intersection.found) {
-			prev_tc_.reset(new Polycode::Vector2(FillTexture(mesh_, prev_tc_.get(), intersection, picker_->current_color(), picker_->current_size())));
+			prev_tc_.reset(new Polycode::Vector2(PaintTexture(mesh_, prev_tc_.get(), intersection, picker_)));
 		}
 	};
 
