@@ -31,7 +31,7 @@
     <ClCompile Include="BackgroundImage.cpp" />
     <ClCompile Include="BoneManipulation.cpp" />
     <ClCompile Include="ModelRotation.cpp" />
-    <ClCompile Include="ColorPicker.cpp" />
+    <ClCompile Include="PenPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
     <ClCompile Include="DepthMap.cpp" />
     <ClCompile Include="DSClient.cpp" />
@@ -57,7 +57,7 @@
     <ClInclude Include="DSClient.h" />
     <ClInclude Include="Algorithms.h" />
     <ClInclude Include="EditorApp.h" />
-    <ClInclude Include="ColorPicker.h" />
+    <ClInclude Include="PenPicker.h" />
     <ClInclude Include="ModelPainter.h" />
     <ClInclude Include="OutputDebugStringBuf.h" />
     <ClInclude Include="Recorder.h" />

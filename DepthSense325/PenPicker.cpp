@@ -1,9 +1,9 @@
-#include "ColorPicker.h"
+#include "PenPicker.h"
 #include "EditorApp.h"
 
 namespace mobamas {
 
-const std::vector<Polycode::Color> ColorPicker::kPalette = ([] {
+const std::vector<Polycode::Color> PenPicker::kPalette = ([] {
 	std::vector<Polycode::Color> p;
 	p.push_back(Polycode::Color(0xffffffff));
 	p.push_back(Polycode::Color(0xffff00ff));
@@ -27,8 +27,10 @@ const std::vector<Polycode::Color> ColorPicker::kPalette = ([] {
 	return p;
 })();
 
+const int kMaxSizeStep = 4;
+
 const int kSize = 30;
-ColorPicker::ColorPicker(): Polycode::EventHandler() {
+PenPicker::PenPicker(): Polycode::EventHandler() {
 	scene_ = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
 	scene_->getActiveCamera()->setOrthoSize(kWinWidth, kWinHeight);
 	scene_->useClearColor = false;
@@ -41,9 +43,20 @@ ColorPicker::ColorPicker(): Polycode::EventHandler() {
 		plane->setColor(kPalette[idx]);
 
 		scene_->addChild(plane);
+		color_picks_.push_back(plane);
 	}
 	current_color_ = kPalette.front();
 
+	for (size_t i = 0; i < kMaxSizeStep; i++)
+	{
+		auto displaySize = (i + 1) * 5;
+		auto plane = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, displaySize, displaySize, displaySize);
+		plane->setPosition(kWinWidth - kSize - 20, kSize * i + 20);
+		plane->setColor(1, 1, 1, 1);
+		scene_->addChild(plane);
+		size_picks_.push_back(plane);
+	}
+	current_size_ = 1;
 
 	cursor_.reset(new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 10, 10, 10));
 	scene_->addChild(cursor_.get());
@@ -53,30 +66,36 @@ ColorPicker::ColorPicker(): Polycode::EventHandler() {
 	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
 }
 
-Polycode::Color* PickClickedColor(Polycode::SceneEntity root, Polycode::Vector2 point) {
-	for (int ci = 0; ci < root.getNumChildren(); ci++)
-	{
-		auto color = root.getChildAtIndex(ci);
-		auto pos = color->getPosition();
-		if (pos.x - kSize / 2 <= point.x && pos.x + kSize / 2 >= point.x && 
-			pos.y - kSize / 2 <= point.y && pos.y + kSize / 2 >= point.y) {
-				return &color->color;
-		}
-	}
-	return nullptr;
+bool IsClicking(const Polycode::Vector2& point, const Polycode::SceneEntity* obj) {
+	auto pos = obj->getPosition();
+	return (pos.x - kSize / 2 <= point.x && pos.x + kSize / 2 >= point.x &&
+		pos.y - kSize / 2 <= point.y && pos.y + kSize / 2 >= point.y);
 }
 
-void ColorPicker::handleEvent(Polycode::Event *e) {
+void PenPicker::PickClicked(const Polycode::Vector2& point) {
+	auto root = scene_->rootEntity;
+	for (auto color_pick : color_picks_) {
+		if (IsClicking(point, color_pick)) {
+			current_color_ = color_pick->color;
+			cursor_->setColor(current_color_);
+			break;
+		}
+	}
+	for (auto size_pick: size_picks_) {
+		if (IsClicking(point, size_pick)) {
+			auto size = size_pick->getPrimitiveParameter1();
+			current_size_ = (int)(size / 5) - 1;
+			cursor_->setPrimitiveOptions(cursor_->getPrimitiveType(), size, size, size);
+			break;
+		}
+	}
+}
+
+void PenPicker::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
 	switch (e->getEventCode()) {
 	case InputEvent::EVENT_MOUSEDOWN: 
-		{
-			auto picked = PickClickedColor(scene_->rootEntity, ((InputEvent*)e)->getMousePosition());
-			if (picked != nullptr) {
-				current_color_ = *picked;
-				cursor_->setColor(picked);
-			}
-		}
+		PickClicked(((InputEvent*)e)->getMousePosition());
 		break;
 	case InputEvent::EVENT_MOUSEMOVE:
 		auto point = ((InputEvent*)e)->getMousePosition();

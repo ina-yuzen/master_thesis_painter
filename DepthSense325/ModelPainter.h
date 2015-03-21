@@ -4,7 +4,7 @@
 
 namespace mobamas {
 
-class ColorPicker;
+class PenPicker;
 
 class ModelPainter : public Polycode::EventHandler {
 public:
@@ -15,7 +15,7 @@ private:
 	Polycode::Scene *scene_;
 	Polycode::SceneMesh *mesh_;
 	std::unique_ptr<Polycode::Vector2> prev_tc_;
-	std::unique_ptr<ColorPicker> picker_;
+	std::unique_ptr<PenPicker> picker_;
 	bool left_clicking_;
 };
 

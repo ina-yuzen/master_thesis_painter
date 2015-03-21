@@ -2,7 +2,7 @@
 
 #include <opencv2\opencv.hpp>
 
-#include "ColorPicker.h"
+#include "PenPicker.h"
 #include "Util.h"
 
 namespace mobamas {
@@ -14,7 +14,7 @@ ModelPainter::ModelPainter(Polycode::Scene *scene, Polycode::SceneMesh *mesh) :
 	prev_tc_(),
 	left_clicking_(false)
 {
-	picker_.reset(new ColorPicker());
+	picker_.reset(new PenPicker());
 
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
@@ -107,9 +107,7 @@ static int Interpolate(const TP& start, const TP& end, int y) {
 	return start.first * (1 - ratio) + end.first * ratio;
 }
 
-const double kPenSize = 500;
-
-static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector2* prev_tc, const Intersection& intersection, const Polycode::Color& color) {
+static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector2* prev_tc, const Intersection& intersection, const Polycode::Color& color, int pen_size) {
 	auto raw = mesh->getMesh();
 	auto idx0 = intersection.first_vertex_index;
 	auto tc0 = raw->getVertexTexCoordAtIndex(idx0);
@@ -125,7 +123,7 @@ static Polycode::Vector2 FillTexture(Polycode::SceneMesh *mesh, Polycode::Vector
 
 	auto carea = (tc1-tc0).crossProduct(tc2-tc0);
 	auto varea = (v1-v0).crossProduct(v2-v0).length();
-	int normalized_pen_size = std::max(round(kPenSize * carea / varea), 1.0);
+	int normalized_pen_size = std::max(round(500 * pen_size * carea / varea), 1.0);
 
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
@@ -153,7 +151,7 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
 		auto intersection = FindIntersectionPolygon(mesh_, ray);
 		if (intersection.found) {
-			prev_tc_.reset(new Polycode::Vector2(FillTexture(mesh_, prev_tc_.get(), intersection, picker_->current_color())));
+			prev_tc_.reset(new Polycode::Vector2(FillTexture(mesh_, prev_tc_.get(), intersection, picker_->current_color(), picker_->current_size())));
 		}
 	};
 
