@@ -1,17 +1,17 @@
 #include "Context.h"
 #include "DepthMap.h"
-#include "DSClient.h"
 #include "EditorApp.h"
 #include "OmniTouch.h"
 #include "Recorder.h"
+#include "RSClient.h"
 
 #ifndef NDEBUG
 #include "OutputDebugStringBuf.h"
 #endif
 
-DWORD WINAPI RunDepthSense(LPVOID lpParam) {
+DWORD WINAPI RunRealSense(LPVOID lpParam) {
 	auto context = (mobamas::Context*)lpParam;
-	context->ds_client->Run();
+	context->rs_client->Run();
 	return 0;
 }
 
@@ -30,9 +30,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 #endif
 
-	auto client = mobamas::DSClient::create();
+	auto client = std::make_shared<mobamas::RSClient>();
 	auto context = std::make_shared<mobamas::Context>();
-	context->ds_client = client;
+	context->rs_client = client;
 	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
 
 	auto view = new Polycode::PolycodeView(hInstance, nCmdShow, L"MOBAM@S");
@@ -40,8 +40,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	DWORD threadId;
 	HANDLE hThread = NULL;
-	if (client->Prepare(context, mobamas::onNewDepthSample)) {
-		hThread = CreateThread(NULL, 0, RunDepthSense, context.get(), 0, &threadId);
+	if (client->Prepare()) {
+		hThread = CreateThread(NULL, 0, RunRealSense, context.get(), 0, &threadId);
 		if (hThread == NULL) {
 			OutputDebugString(L"Failed to start depth sense thread");
 			LPTSTR text = NULL;
@@ -52,7 +52,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		}
 	}
 	else {
-		MessageBox(NULL, L"DepthSense is not connected.", L"Insufficient", MB_ICONWARNING | MB_OK);
+		MessageBox(NULL, L"Failed to prepare RealSense", L"Insufficient", MB_ICONWARNING | MB_OK);
 	}
 
 	MSG Msg;
@@ -65,7 +65,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	OutputDebugString(L"Shutting down...");
 	if (hThread != NULL) {
-		context->ds_client->Quit();
+		context->rs_client->Quit();
 		auto result = WaitForMultipleObjects(1, &hThread, TRUE, 1000);
 		switch (result) {
 		case WAIT_TIMEOUT:
