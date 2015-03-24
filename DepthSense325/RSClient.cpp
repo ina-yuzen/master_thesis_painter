@@ -94,9 +94,16 @@ void RSClient::Run() {
 
 		cv::Mat seg_mask = FindFirstSegmentationMask(blob_data);
 
-		auto sample = sm_->QuerySample();
-		cv::Mat raw_depth = ConvertDepthImage(sample);
-		raw_depth.copyTo(segmented_depth_, seg_mask);
+		cv::Mat new_depth = cv::Mat();
+		if (!seg_mask.empty()) {
+			auto sample = sm_->QuerySample();
+			cv::Mat raw_depth = ConvertDepthImage(sample);
+			raw_depth.copyTo(new_depth, seg_mask);
+		}
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			segmented_depth_ = new_depth;
+		}
 
 		sm_->ReleaseFrame();
 	}

@@ -30,6 +30,7 @@
   <ItemGroup>
     <ClCompile Include="BackgroundImage.cpp" />
     <ClCompile Include="BoneManipulation.cpp" />
+    <ClCompile Include="HandVisualization.cpp" />
     <ClCompile Include="ModelRotation.cpp" />
     <ClCompile Include="PenPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
@@ -51,6 +52,7 @@
     <ClInclude Include="BackgroundImage.h" />
     <ClInclude Include="BoneManipulation.h" />
     <ClInclude Include="CameraEventListeners.h" />
+    <ClInclude Include="HandVisualization.h" />
     <ClInclude Include="Option.h" />
     <ClInclude Include="RSClient.h" />
     <ClInclude Include="RSUtils.h" />

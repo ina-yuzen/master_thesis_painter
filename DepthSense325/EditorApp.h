@@ -11,6 +11,7 @@ const int kWinWidth = 640;
 struct Context;
 class BackgroundImage;
 class BoneManipulation;
+class HandVisualization;
 class ModelRotation;
 class ModelPainter;
 
@@ -25,6 +26,7 @@ private:
 	Polycode::SceneMesh *mesh_;
 	std::unique_ptr<BackgroundImage> background_image_;
 	std::shared_ptr<BoneManipulation> bone_manipulation_;
+	std::unique_ptr<HandVisualization> hand_visualization_;
 	std::unique_ptr<ModelRotation> rotation_;
 	std::unique_ptr<ModelPainter> painter_;
 };

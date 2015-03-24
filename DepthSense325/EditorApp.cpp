@@ -3,6 +3,7 @@
 #include "BackgroundImage.h"
 #include "BoneManipulation.h"
 #include "Context.h"
+#include "HandVisualization.h"
 #include "ModelRotation.h"
 #include "ModelPainter.h"
 
@@ -42,6 +43,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	cam->setPosition(3, 3, 3);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
+	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
 	bone_manipulation_.reset(new BoneManipulation(scene, mesh_));
 	painter_.reset(new ModelPainter(scene, mesh_));
 	rotation_.reset(new ModelRotation(mesh_));
@@ -59,6 +61,7 @@ EditorApp::~EditorApp() {
 bool EditorApp::Update() {
 	// background_image_->Update();
 	// bone_manipulation_->Update();
+	hand_visualization_->Update();
 	return core_->updateAndRender();
 }
 
