@@ -68,7 +68,7 @@ std::vector<cv::Point> PinchErosion(std::shared_ptr<Context> context, const Dept
 				continue;
 			}
 			auto massCenter = cv::Point2d(mu.m10/mu.m00, mu.m01/mu.m00);
-			for (int i = 0; i < pts.size(); i++)
+			for (size_t i = 0; i < pts.size(); i++)
 			{
 				auto pt = pts[i];
 				cv::Vec2d orientation(pt.x - massCenter.x, pt.y - massCenter.y);
