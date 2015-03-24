@@ -13,7 +13,7 @@ HandVisualization::HandVisualization(Polycode::Scene* scene, std::shared_ptr<RSC
 }
 
 const size_t kSamplingStep = 5;
-const float kDepthRatio = 1.0f;
+const float kDepthRatio = 0.02f;
 
 void HandVisualization::Update() {
 	auto raw = mesh_->getMesh();
