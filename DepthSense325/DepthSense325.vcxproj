@@ -41,6 +41,7 @@
     <ClCompile Include="OmniTouch.cpp" />
     <ClCompile Include="PinchErosion.cpp" />
     <ClCompile Include="PinchNailColor.cpp" />
+    <ClCompile Include="PinchRightEdge.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="EditorApp.cpp" />
     <ClCompile Include="Util.cpp" />
