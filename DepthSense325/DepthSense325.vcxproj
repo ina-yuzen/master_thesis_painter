@@ -39,6 +39,7 @@
     <ClCompile Include="LibGroundCalibration\GroundPlaneCalibration.cpp" />
     <ClCompile Include="ModelPainter.cpp" />
     <ClCompile Include="OmniTouch.cpp" />
+    <ClCompile Include="PinchCenterOfHole.cpp" />
     <ClCompile Include="PinchErosion.cpp" />
     <ClCompile Include="PinchNailColor.cpp" />
     <ClCompile Include="PinchRightEdge.cpp" />

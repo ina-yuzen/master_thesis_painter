@@ -66,6 +66,9 @@
     <ClCompile Include="PinchRightEdge.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="PinchCenterOfHole.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LibGroundCalibration\GPGesutureRecognition.h">
