@@ -62,7 +62,7 @@
     </ClCompile>
     <ClCompile Include="PenPicker.cpp">
       <Filter>ソース ファイル</Filter>
-    </ClCompile>\
+    </ClCompile>
     <ClCompile Include="RSClient.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
