@@ -36,7 +36,7 @@ void onNewDepthSample(DepthSense::DepthNode node, DepthSense::DepthNode::NewSamp
 	map.data = data;
 
 	// Write processes here
-	auto founds = PinchNailColor(context, map);
+	auto founds = PinchRightEdge(context, map);
 	NotifyPinchChange(context, map, founds);
 
 	auto key = cv::waitKey(1);
