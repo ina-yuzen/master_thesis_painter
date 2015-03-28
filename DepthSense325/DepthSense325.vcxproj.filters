@@ -45,10 +45,10 @@
     <ClCompile Include="HandVisualization.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PinchRightEdge.cpp">
+    <ClCompile Include="PinchCenterOfHole.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PinchCenterOfHole.cpp">
+    <ClCompile Include="PinchRightEdge.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>

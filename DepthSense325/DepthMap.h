@@ -8,6 +8,7 @@ struct DepthMap {
 	int32_t w, h;
 	cv::Mat raw_mat;
 	cv::Mat normalized;
+	cv::Mat binary;  // binary image in which white is interested
 };
 
 }
