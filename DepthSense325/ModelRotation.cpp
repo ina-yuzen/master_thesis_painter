@@ -1,5 +1,6 @@
 #include "ModelRotation.h"
 
+#include <PolyWinCore.h>
 #include <iostream>
 
 namespace mobamas {
@@ -14,12 +15,25 @@ ModelRotation::ModelRotation(Polycode::SceneMesh *mesh):
 {
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
+#ifdef NO_TOUCH_SUPPORT
+	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
+	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+#else
 	input->addEventListener(this, InputEvent::EVENT_TOUCHES_BEGAN);
 	input->addEventListener(this, InputEvent::EVENT_TOUCHES_MOVED);
+#endif
 }
 
 void ModelRotation::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
+	
+	auto rotate_by_diff = [&](Polycode::Vector2 const& new_pos) {
+		auto diff = new_pos - mouse_prev_;
+		mesh_->Yaw(diff.x * kSensitivity);
+		mesh_->Pitch(diff.y * kSensitivity);
+		mouse_prev_ = new_pos;
+	};
 
 	switch (e->getEventCode()) {
 	case InputEvent::EVENT_TOUCHES_MOVED:
@@ -33,10 +47,7 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 					return;
 				}
 				auto new_pos = ((InputEvent*)e)->touches.front().position;
-				auto diff = new_pos - mouse_prev_;
-				mesh_->Yaw(diff.x * kSensitivity);
-				mesh_->Pitch(diff.y * kSensitivity);
-				mouse_prev_ = new_pos;
+				rotate_by_diff(new_pos);
 			}
 			else if (operation_ == Operation::SCALE) {
 				if (touches.size() < 2) {
@@ -70,6 +81,18 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 				break;
 			}
 		}
+		break;
+	case InputEvent::EVENT_MOUSEDOWN:
+		moving_ = ((InputEvent*)e)->getMouseButton() == 1;
+		mouse_prev_ = ((InputEvent*)e)->getMousePosition();
+		operation_ = Operation::ROTATE;
+		break;	
+	case InputEvent::EVENT_MOUSEUP:
+		moving_ = false;
+		break;
+	case InputEvent::EVENT_MOUSEMOVE:
+		if (moving_)
+			rotate_by_diff(((InputEvent*)e)->getMousePosition());
 		break;
 	}
 }
