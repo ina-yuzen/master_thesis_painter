@@ -12,6 +12,6 @@ struct Context {
 	std::unique_ptr<Recorder> recorder;
 	std::shared_ptr<RSClient> rs_client;
 	std::weak_ptr<PinchEventListener> pinch_listeners;
-	std::vector<cv::Point> prev_pinches;
 };
+
 }

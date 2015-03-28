@@ -19,13 +19,13 @@ static bool HasHandHole(CvSeq *parent) {
 	return false;
 }
 
-Option<cv::Point> PinchRightEdge(std::shared_ptr<Context> context, const DepthMap& data) {
+Option<cv::Point3f> PinchRightEdge(std::shared_ptr<Context> context, const DepthMap& data) {
 	IplImage fillIpl = data.binary;
 	CvMemStorage *storage = cvCreateMemStorage(0);
 	CvSeq *cSeq = NULL;
 	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
-	Option<cv::Point> found = Option<cv::Point>::None();
+	Option<cv::Point3f> found = Option<cv::Point3f>::None();
 	double max_area = 0;
 	while (cSeq != NULL) {
 		if (cvContourArea(cSeq) > max_area) {
@@ -41,7 +41,10 @@ Option<cv::Point> PinchRightEdge(std::shared_ptr<Context> context, const DepthMa
 					if (right_most_point.x < pt.x)
 						right_most_point = pt;
 				}
-				found.Reset(right_most_point);
+				found.Reset(cv::Point3f(
+					right_most_point.x / static_cast<float>(data.w),
+					right_most_point.y / static_cast<float>(data.h),
+					100)); // TOOD: estimate depth from depthmap
 			}
 		}
 		cSeq = cSeq->h_next;

@@ -19,13 +19,13 @@ static CvSeq* FindLargeHole(CvSeq *parent) {
 	return NULL;
 }
 
-Option<cv::Point> PinchCenterOfHole(std::shared_ptr<Context> context, const DepthMap& data) {
+Option<cv::Point3f> PinchCenterOfHole(std::shared_ptr<Context> context, const DepthMap& data) {
 	IplImage fillIpl = data.binary;
 	CvMemStorage *storage = cvCreateMemStorage(0);
 	CvSeq *cSeq = NULL;
 	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
-	Option<cv::Point> found = Option<cv::Point>::None();
+	Option<cv::Point3f> found = Option<cv::Point3f>::None();
 	double max_area = 0;
 	while (cSeq != NULL) {
 		if (cvContourArea(cSeq) > max_area) {
@@ -39,8 +39,11 @@ Option<cv::Point> PinchCenterOfHole(std::shared_ptr<Context> context, const Dept
 					cSeq = cSeq->h_next;
 					continue;
 				}
-				auto massCenter = cv::Point2d(mu.m10 / mu.m00, mu.m01 / mu.m00);
-				found.Reset(massCenter);
+				auto mass_center = cv::Point2d(mu.m10 / mu.m00, mu.m01 / mu.m00);
+				found.Reset(cv::Point3f(
+					mass_center.x / static_cast<float>(data.w),
+					mass_center.y / static_cast<float>(data.h),
+					100)); // TOOD: estimate depth from depthmap
 			}
 		}
 		cSeq = cSeq->h_next;

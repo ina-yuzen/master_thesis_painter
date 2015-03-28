@@ -29,8 +29,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 #endif
 
-	auto client = std::make_shared<mobamas::RSClient>();
 	auto context = std::make_shared<mobamas::Context>();
+	auto client = std::make_shared<mobamas::RSClient>(context);
 	context->rs_client = client;
 	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
 

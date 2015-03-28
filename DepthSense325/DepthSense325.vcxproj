@@ -36,6 +36,7 @@
     <ClCompile Include="ModelPainter.cpp" />
     <ClCompile Include="PinchCenterOfHole.cpp" />
     <ClCompile Include="PinchRightEdge.cpp" />
+    <ClCompile Include="PinchTracker.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="EditorApp.cpp" />
     <ClCompile Include="RSClient.cpp" />
@@ -48,6 +49,7 @@
     <ClInclude Include="DepthMap.h" />
     <ClInclude Include="HandVisualization.h" />
     <ClInclude Include="Option.h" />
+    <ClInclude Include="PinchTracker.h" />
     <ClInclude Include="RSClient.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="ModelRotation.h" />
@@ -112,6 +114,7 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

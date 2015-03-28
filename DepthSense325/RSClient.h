@@ -2,12 +2,17 @@
 #include <pxcsession.h>
 #include <opencv2\opencv.hpp>
 #include <mutex>
+#include <memory>
+#include "PinchTracker.h"
 
 namespace mobamas {
+
+struct Context;
 
 class RSClient
 {
 public:
+	RSClient(std::shared_ptr<Context> context) : context_(context), tracker_(context) {}
 	~RSClient();
 	bool Prepare();
 	void Run();
@@ -19,6 +24,8 @@ public:
 
 private:
 	volatile bool should_quit_ = false;
+	std::shared_ptr<Context> context_;
+	PinchTracker tracker_;
 	PXCSenseManager *sm_;
 	cv::Mat segmented_depth_;
 	std::mutex mutex_;
