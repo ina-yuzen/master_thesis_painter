@@ -32,8 +32,10 @@ std::vector<Polycode::Vector3> ActualVertexPositions(Polycode::SceneMesh *mesh) 
 void DisplayPinchMats(DepthMap const& depth_map, Option<cv::Point3f> const& pinch_point) {
 	IplImage *writeTo = cvCreateImage(cvSize(depth_map.w, depth_map.h), IPL_DEPTH_8U, 3);
 	IplImage background = depth_map.normalized;
-	IplImage binary = depth_map.binary;
-	cvMerge(&binary, &background ,&background, NULL, writeTo);
+	cvMerge(&background, &background ,&background, NULL, writeTo);
+	for (size_t i = 0; i < depth_map.binary.total(); i++) {
+		writeTo->imageData[i * 3 + 2] = depth_map.binary.at<uchar>(i) > 0 ? 0xff : 0;
+	}
 	if (pinch_point) {
 		cv::Point img_pt((*pinch_point).x * depth_map.w, (*pinch_point).y * depth_map.h);
 		cvCircle(writeTo, img_pt, 3, CV_RGB(255, 0, 60), -1);
