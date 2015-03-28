@@ -56,8 +56,7 @@ EditorApp::~EditorApp() {
 }
 
 bool EditorApp::Update() {
-	// background_image_->Update();
-	// bone_manipulation_->Update();
+	bone_manipulation_->Update();
 	hand_visualization_->Update();
 	return core_->updateAndRender();
 }
