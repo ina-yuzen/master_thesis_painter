@@ -5,7 +5,7 @@
 #include <pxcsensemanager.h>
 #include <pxcstatus.h>
 
-#include "RSUtils.h"
+#include "Util.h"
 
 namespace mobamas {
 

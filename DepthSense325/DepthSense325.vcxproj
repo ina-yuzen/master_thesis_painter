@@ -39,7 +39,6 @@
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="EditorApp.cpp" />
     <ClCompile Include="RSClient.cpp" />
-    <ClCompile Include="RSUtils.cpp" />
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -50,7 +49,6 @@
     <ClInclude Include="HandVisualization.h" />
     <ClInclude Include="Option.h" />
     <ClInclude Include="RSClient.h" />
-    <ClInclude Include="RSUtils.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="ModelRotation.h" />
     <ClInclude Include="Context.h" />
