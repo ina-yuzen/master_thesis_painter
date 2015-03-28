@@ -10,8 +10,15 @@ public:
 
 	operator bool() const { return is_engaged_; }
 
+	// "The behavior is undefined if *this is in disengaged state." (experimental::optional)
 	T const& operator*() const { return value_; }
 	T& operator*() { return value_; }
+
+	void Clear() { is_engaged_ = false; }
+	void Reset(T const& new_value) { 
+		is_engaged_ = true;
+		value_ = new_value; 
+	}
 
 	static Option<T> None() { return Option(); }
 private:

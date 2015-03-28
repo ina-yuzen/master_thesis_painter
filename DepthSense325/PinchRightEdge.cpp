@@ -22,7 +22,7 @@ bool HasHandHole(CvSeq *parent) {
 	return false;
 }
 
-std::vector<cv::Point> PinchRightEdge(std::shared_ptr<Context> context, const DepthMap& data) {
+Option<cv::Point> PinchRightEdge(std::shared_ptr<Context> context, const DepthMap& data) {
 	cv::Mat dest;
 	cv::threshold(data.raw_mat, dest, kDepthThreshMM, 0x7fff, cv::THRESH_BINARY);
 	cv::Mat fill(data.h, data.w, CV_8UC1);
@@ -48,11 +48,11 @@ std::vector<cv::Point> PinchRightEdge(std::shared_ptr<Context> context, const De
 	CvSeq *cSeq = NULL;
 	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
-	cv::vector<cv::Point> found;
+	Option<cv::Point> found = Option<cv::Point>::None();
 	double max_area = 0;
 	while (cSeq != NULL) {
 		if (cvContourArea(cSeq) > max_area) {
-			found.clear();
+			found.Clear();
 			// hand with pinch hole
 			if (HasHandHole(cSeq)) {
 				CvSeqReader reader;
@@ -65,15 +65,15 @@ std::vector<cv::Point> PinchRightEdge(std::shared_ptr<Context> context, const De
 					if (right_most_point.x < pt.x)
 						right_most_point = pt;
 				}
-				found.push_back(right_most_point);
+				found.Reset(right_most_point);
 			}
 		}
 		cSeq = cSeq->h_next;
 	}
 	cvReleaseMemStorage(&storage);
 	
-	if (!found.empty())
-		cvCircle(writeTo, found.front(), 3, CV_RGB(255, 0, 60), -1);
+	if (found)
+		cvCircle(writeTo, *found, 3, CV_RGB(255, 0, 60), -1);
 	cvShowImage("result", writeTo);
 	cvReleaseImage(&writeTo);
 

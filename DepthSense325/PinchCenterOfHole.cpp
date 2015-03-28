@@ -22,7 +22,7 @@ CvSeq* FindLargeHole(CvSeq *parent) {
 	return NULL;
 }
 
-std::vector<cv::Point> PinchCenterOfHole(std::shared_ptr<Context> context, const DepthMap& data) {
+Option<cv::Point> PinchCenterOfHole(std::shared_ptr<Context> context, const DepthMap& data) {
 	cv::Mat dest;
 	cv::threshold(data.raw_mat, dest, kDepthThreshMM, 0x7fff, cv::THRESH_BINARY);
 	cv::Mat fill(data.h, data.w, CV_8UC1);
@@ -48,11 +48,11 @@ std::vector<cv::Point> PinchCenterOfHole(std::shared_ptr<Context> context, const
 	CvSeq *cSeq = NULL;
 	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
-	cv::vector<cv::Point> found;
+	Option<cv::Point> found = Option<cv::Point>::None();
 	double max_area = 0;
 	while (cSeq != NULL) {
 		if (cvContourArea(cSeq) > max_area) {
-			found.clear();
+			found.Clear();
 			// hand with pinch hole
 			if (CvSeq* hole = FindLargeHole(cSeq)) {
 
@@ -63,15 +63,15 @@ std::vector<cv::Point> PinchCenterOfHole(std::shared_ptr<Context> context, const
 					continue;
 				}
 				auto massCenter = cv::Point2d(mu.m10 / mu.m00, mu.m01 / mu.m00);
-				found.push_back(massCenter);
+				found.Reset(massCenter);
 			}
 		}
 		cSeq = cSeq->h_next;
 	}
 	cvReleaseMemStorage(&storage);
 	
-	if (!found.empty())
-		cvCircle(writeTo, found.front(), 3, CV_RGB(255, 0, 60), -1);
+	if (found)
+		cvCircle(writeTo, *found, 3, CV_RGB(255, 0, 60), -1);
 	cvShowImage("result", writeTo);
 	cvReleaseImage(&writeTo);
 
