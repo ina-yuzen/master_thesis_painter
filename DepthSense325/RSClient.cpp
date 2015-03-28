@@ -83,6 +83,17 @@ static cv::Mat ConvertDepthImage(PXCCapture::Sample* sample) {
 	return mat;
 }
 
+static uint16_t GetMinimumApplicableValue(cv::Mat depth) {
+	assert(!depth.empty());
+	uint16_t min = 0xffff;
+	for (size_t i = 0, length = depth.total(); i < length; i++)
+	{
+		auto v = depth.at<uint16_t>(i);
+		if (min > v && v > 0) min = v;
+	}
+	return min;
+}
+
 static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_depth, cv::Mat const& binary, uint16_t saturated) {
 	auto depth = sample->depth;
 	auto info = depth->QueryInfo();	
@@ -114,6 +125,7 @@ static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_de
 	};
 }
 
+const int kCalibrationFrames = 15;
 void RSClient::Run() {
 	pxcStatus error;
 
@@ -125,6 +137,11 @@ void RSClient::Run() {
 	auto device = sm_->QueryCaptureManager()->QueryDevice();
 	uint16_t saturated = device->QueryDepthLowConfidenceValue();
 	std::cout << "Saturated value: " << saturated << std::endl;
+
+	std::vector<uint16_t> min_values;
+	min_values.reserve(kCalibrationFrames);
+	uint16_t min_depth_threshold;
+	int iter_count = 0;
 
 	while (!should_quit_ && sm_ != nullptr && (error = sm_->AcquireFrame(true)) >= PXC_STATUS_NO_ERROR) {
 		error = blob_data->Update();
@@ -141,15 +158,34 @@ void RSClient::Run() {
 
 		cv::Mat new_depth;
 		raw_depth.copyTo(new_depth, seg_mask);
-		{
-			std::lock_guard<std::mutex> lock(mutex_);
-			segmented_depth_ = new_depth;
+		auto min_depth = GetMinimumApplicableValue(new_depth);
+
+		if (iter_count < kCalibrationFrames) {
+			min_values.push_back(min_depth);
+			if (iter_count == kCalibrationFrames - 1) {
+				std::sort(min_values.begin(), min_values.end());
+				min_depth_threshold = min_values[kCalibrationFrames / 4]; // 25 percentile to avoid too min noise
+				std::cout << "Calibrated to " << min_depth_threshold << std::endl;
+			}
+			std::cout << min_depth << std::endl;
+		}
+		else {
+			if (min_depth_threshold < min_depth + 10) {
+				seg_mask = 0;
+				new_depth = 0;
+			}
+
+			{
+				std::lock_guard<std::mutex> lock(mutex_);
+				segmented_depth_ = new_depth;
+			}
+
+			auto depth_map = CreateDepthMap(sample, raw_depth, seg_mask, saturated);
+			auto result = PinchRightEdge(context_, depth_map);
+			tracker_.NotifyNewData(depth_map, result);
 		}
 
-		auto depth_map = CreateDepthMap(sample, raw_depth, seg_mask, saturated);
-		auto result = PinchRightEdge(context_, depth_map);
-		tracker_.NotifyNewData(depth_map, result);
-
+		iter_count++;
 		sm_->ReleaseFrame();
 	}
 
