@@ -1,9 +1,7 @@
 #include "Algorithms.h"
 
-
 #include "Context.h"
 #include "DepthMap.h"
-#include "DSClient.h"
 #include "Recorder.h"
 
 namespace mobamas {

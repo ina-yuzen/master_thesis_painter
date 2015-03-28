@@ -18,7 +18,6 @@ Recorder::~Recorder() {
 	}
 }
 
-
 void Recorder::WriteFrame(const cv::Mat& f) {
 	if (video_)
 		cvWriteFrame(video_, &((IplImage)f));

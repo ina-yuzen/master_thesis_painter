@@ -1,7 +1,6 @@
 #include "Context.h"
 #include "DepthMap.h"
 #include "EditorApp.h"
-#include "OmniTouch.h"
 #include "Recorder.h"
 #include "RSClient.h"
 

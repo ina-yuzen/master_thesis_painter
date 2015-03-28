@@ -28,21 +28,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BackgroundImage.cpp" />
     <ClCompile Include="BoneManipulation.cpp" />
     <ClCompile Include="HandVisualization.cpp" />
     <ClCompile Include="ModelRotation.cpp" />
     <ClCompile Include="PenPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
-    <ClCompile Include="DepthMap.cpp" />
-    <ClCompile Include="DSClient.cpp" />
-    <ClCompile Include="LibGroundCalibration\GPGesutureRecognition.cpp" />
-    <ClCompile Include="LibGroundCalibration\GroundPlaneCalibration.cpp" />
     <ClCompile Include="ModelPainter.cpp" />
-    <ClCompile Include="OmniTouch.cpp" />
     <ClCompile Include="PinchCenterOfHole.cpp" />
-    <ClCompile Include="PinchErosion.cpp" />
-    <ClCompile Include="PinchNailColor.cpp" />
     <ClCompile Include="PinchRightEdge.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="EditorApp.cpp" />
@@ -54,6 +46,7 @@
     <ClInclude Include="BackgroundImage.h" />
     <ClInclude Include="BoneManipulation.h" />
     <ClInclude Include="CameraEventListeners.h" />
+    <ClInclude Include="DepthMap.h" />
     <ClInclude Include="HandVisualization.h" />
     <ClInclude Include="Option.h" />
     <ClInclude Include="RSClient.h" />
@@ -61,17 +54,12 @@
     <ClInclude Include="Util.h" />
     <ClInclude Include="ModelRotation.h" />
     <ClInclude Include="Context.h" />
-    <ClInclude Include="DepthMap.h" />
-    <ClInclude Include="DSClient.h" />
     <ClInclude Include="Algorithms.h" />
     <ClInclude Include="EditorApp.h" />
     <ClInclude Include="PenPicker.h" />
     <ClInclude Include="ModelPainter.h" />
     <ClInclude Include="OutputDebugStringBuf.h" />
     <ClInclude Include="Recorder.h" />
-    <ClInclude Include="LibGroundCalibration\GPGesutureRecognition.h" />
-    <ClInclude Include="LibGroundCalibration\GroundCalibrationConst.h" />
-    <ClInclude Include="LibGroundCalibration\GroundPlaneCalibration.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -124,18 +112,17 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\include;C:\Program Files %28x86%29\SoftKinetic\DepthSenseSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\lib;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\lib;C:\Program Files %28x86%29\SoftKinetic\DepthSenseSDK\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>DepthSense.lib;winmm.lib;ws2_32.lib;opengl32.lib;glu32.lib;Polycore_d.lib;zlibd.lib;freetype_d.lib;liboggd.lib;libvorbisd.lib;libvorbisfiled.lib;OpenAL32d.lib;kernel32.lib;physfsd.lib;libpng15_staticd.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\lib;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;ws2_32.lib;opengl32.lib;glu32.lib;Polycore_d.lib;zlibd.lib;freetype_d.lib;liboggd.lib;libvorbisd.lib;libvorbisfiled.lib;OpenAL32d.lib;kernel32.lib;physfsd.lib;libpng15_staticd.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "C:\Program Files (x86)\SoftKinetic\DepthSenseSDK\bin\*.dll" $(OutputPath)
-xcopy /Y "$(SolutionDir)..\Polycode\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
+      <Command>xcopy /Y "$(SolutionDir)..\Polycode\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

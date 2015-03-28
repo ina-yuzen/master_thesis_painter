@@ -1,6 +1,5 @@
 #include "EditorApp.h"
 
-#include "BackgroundImage.h"
 #include "BoneManipulation.h"
 #include "Context.h"
 #include "HandVisualization.h"
@@ -18,8 +17,6 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	rm->addArchive("Resources/default.pak");
 	rm->addDirResource("default", false);
 
-	background_image_.reset(new BackgroundImage(context));
-	
 	auto scene = new Polycode::Scene();
 	mesh_ = new SceneMesh("Resources/dummy.mesh");
 	mesh_->loadTexture("Resources/dummy.png");
