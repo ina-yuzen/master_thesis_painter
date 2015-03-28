@@ -52,7 +52,7 @@ static cv::Mat FindFirstSegmentationMask(PXCBlobData* blob_data) {
 		error = blob_data->QueryBlobByAccessOrder(nth, PXCBlobData::ACCESS_ORDER_NEAR_TO_FAR, iblob);
 		if (error != PXC_STATUS_NO_ERROR) {
 			ReportPxcBadStatus(error);
-			return cv::Mat();
+			break;
 		}
 		PXCImage* seg_image;
 		error = iblob->QuerySegmentationImage(seg_image);
@@ -132,13 +132,15 @@ void RSClient::Run() {
 			ReportPxcBadStatus(error);
 
 		auto sample = sm_->QuerySample();
-		cv::Mat seg_mask = FindFirstSegmentationMask(blob_data);
-		cv::Mat raw_depth = ConvertDepthImage(sample);
 
-		cv::Mat new_depth = cv::Mat();
-		if (!seg_mask.empty()) {
-			raw_depth.copyTo(new_depth, seg_mask);
+		auto raw_depth = ConvertDepthImage(sample);
+		auto seg_mask = FindFirstSegmentationMask(blob_data);
+		if (seg_mask.empty()) {
+			seg_mask = cv::Mat(raw_depth.size(), CV_8UC1, cv::Scalar(0));
 		}
+
+		cv::Mat new_depth;
+		raw_depth.copyTo(new_depth, seg_mask);
 		{
 			std::lock_guard<std::mutex> lock(mutex_);
 			segmented_depth_ = new_depth;

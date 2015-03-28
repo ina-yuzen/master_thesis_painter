@@ -20,10 +20,10 @@ static CvSeq* FindLargeHole(CvSeq *parent) {
 }
 
 Option<cv::Point3f> PinchCenterOfHole(std::shared_ptr<Context> context, const DepthMap& data) {
-	IplImage fillIpl = data.binary;
+	assert(!data.binary.empty());
 	CvMemStorage *storage = cvCreateMemStorage(0);
 	CvSeq *cSeq = NULL;
-	cvFindContours(&fillIpl, storage, &cSeq, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+	cvFindContours(&((IplImage)data.binary), storage, &cSeq, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
 	Option<cv::Point3f> found = Option<cv::Point3f>::None();
 	double max_area = 0;
