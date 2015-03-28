@@ -140,7 +140,7 @@ void RSClient::Run() {
 
 	std::vector<uint16_t> min_values;
 	min_values.reserve(kCalibrationFrames);
-	uint16_t min_depth_threshold;
+	uint16_t min_depth_threshold = 0xffff;
 	int iter_count = 0;
 
 	while (!should_quit_ && sm_ != nullptr && (error = sm_->AcquireFrame(true)) >= PXC_STATUS_NO_ERROR) {
