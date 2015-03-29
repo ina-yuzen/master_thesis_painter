@@ -64,35 +64,34 @@ const double kSensitivity = 1;
 void BoneManipulation::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
 
-	auto set_click_state = [&](bool select) {
-		InputEvent *ie = (InputEvent*)e;
-		if (ie->mouseButton != kMouseMiddleButtonCode) 
-			return;
-		mouse_prev_ = ie->getMousePosition();
-		if (select) {
-			current_target_ = SelectHandleByWindowCoord(ie->getMousePosition());
-		} else {
-			current_target_ = nullptr;
-		}
+	auto fake_3d_coord = [](InputEvent* e) {
+		auto point = e->getMousePosition();
+		return cv::Point3f(point.x / static_cast<float>(kWinWidth),
+			point.y / static_cast<float>(kWinHeight),
+			100);
 	};
 
 	switch (e->getEventCode()) {
 	case InputEvent::EVENT_MOUSEMOVE:
-		if (current_target_ != nullptr) {
-			auto new_pos = ((InputEvent*)e)->mousePosition;
-			auto diff = new_pos - mouse_prev_;
-			current_target_->bone->Yaw(diff.x * kSensitivity);
-			current_target_->bone->Pitch(diff.y * kSensitivity);
-			current_target_->bone->rebuildFinalMatrix();
-			mouse_prev_ = new_pos;
-		}
+	{
+		auto ie = (InputEvent*)e;
+		OnPinchMove(fake_3d_coord(ie));
 		break;
+	}
 	case InputEvent::EVENT_MOUSEDOWN:
-		set_click_state(true);
+	{
+		auto ie = (InputEvent*)e;
+		if (ie->getMouseButton() == kMouseMiddleButtonCode)
+			OnPinchStart(fake_3d_coord(ie));
 		break;
+	}
 	case InputEvent::EVENT_MOUSEUP:
-		set_click_state(false);
+	{
+		auto ie = (InputEvent*)e;
+		if (ie->getMouseButton() == kMouseMiddleButtonCode)
+			OnPinchEnd();
 		break;
+	}
 	}
 }
 
