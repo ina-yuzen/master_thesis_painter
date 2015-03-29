@@ -11,4 +11,10 @@ std::vector<Polycode::Vector3> ActualVertexPositions(Polycode::SceneMesh *mesh);
 void DisplayPinchMats(DepthMap const& depth_map, Option<cv::Point3f> const& pinch_point);
 void ReportPxcBadStatus(const pxcStatus& status);
 
+// debug printers
+std::ostream& operator<<(std::ostream& os, Polycode::Matrix4 const& mat);
+std::ostream& operator<<(std::ostream& os, Polycode::Vector2 const& vec);
+std::ostream& operator<<(std::ostream& os, Polycode::Vector3 const& vec);
+std::ostream& operator<<(std::ostream& os, Polycode::Quaternion const& quat);
+
 }

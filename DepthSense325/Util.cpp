@@ -151,4 +151,31 @@ void ReportPxcBadStatus(const pxcStatus& status) {
 	}
 }
 
+std::ostream& operator<<(std::ostream& os, Polycode::Matrix4 const& mat) {
+	for (size_t i = 0; i < 16; i++)
+	{
+		os << mat.ml[i];
+		if (i % 4 == 3)
+			os << std::endl;
+		else
+			os << " ";
+	}
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Polycode::Vector2 const& vec) {
+	os << "(" << vec.x << ", " << vec.y << ")";
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Polycode::Vector3 const& vec) {
+	os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Polycode::Quaternion const& quat) {
+	os << "[" << quat.w << ", " << quat.x << ", " << quat.y << ", " << quat.z << "]";
+	return os;
+}
+
 }
