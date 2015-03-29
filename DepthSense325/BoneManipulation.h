@@ -27,7 +27,7 @@ private:
 	Polycode::SceneMesh *mesh_;
 	std::vector<BoneHandle> handles_;
 	BoneHandle* current_target_;
-	Polycode::Vector2 mouse_prev_;
+	Polycode::Vector2 xy_rotation_center_;
 	cv::Point3f pinch_prev_;
 
 	BoneHandle* SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error = 0.1);

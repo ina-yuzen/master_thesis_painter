@@ -41,6 +41,7 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 		auto b = skeleton->getBone(bidx);
 		bone_id_map[b] = bidx;
 		b->disableAnimation = true;
+		b->setRotationByQuaternion(Polycode::Quaternion());
 	}
 	for (auto name: kManipulatableBones) {
 		BoneHandle handle;
@@ -125,18 +126,47 @@ void BoneManipulation::Update() {
 	}
 }
 
+static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::vector<Polycode::Vector3> const& centers, BoneHandle const* current_target) {
+	assert(current_target->bone->parentBoneId >= 0);
+
+	// Prepare rendering environment
+	auto renderer = Polycode::CoreServices::getInstance()->getRenderer();
+	renderer->BeginRender();
+	renderer->setPerspectiveDefaults();
+	scene->getActiveCamera()->doCameraTransform();
+
+	auto camera = renderer->getCameraMatrix();
+	auto projection = renderer->getProjectionMatrix();
+	auto view = renderer->getViewport();
+	auto this_pos = renderer->Project(camera, projection, view, centers[current_target->bone_id]);
+	auto parent_pos = renderer->Project(camera, projection, view, centers[current_target->bone->parentBoneId]);
+
+	renderer->EndRender();
+
+	return (parent_pos + this_pos) * 0.5;
+}
+
+static Polycode::Vector2 PinchPointOnWindow(cv::Point3f const& point) {
+	return Polycode::Vector2(kWinWidth * point.x, kWinHeight * point.y);
+}
+
 void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	pinch_prev_ = point;
-	Polycode::Vector2 on_window(kWinWidth * point.x, kWinHeight * point.y);
-	current_target_ = SelectHandleByWindowCoord(on_window, 1.0);
+	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 1.0);
 	if (current_target_) {
 		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
+		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), current_target_);
+		auto debug_scene = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
+		auto debug_point = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 3, 3, 10);
+		debug_scene->addEntity(debug_point);
+		debug_point->setPositionX(xy_rotation_center_.x);
+		debug_point->setPositionY(xy_rotation_center_.y);
 	}
 }
 
 static Polycode::Scene *debug_scene = nullptr;
 static Polycode::ScreenEntity* debug_point = nullptr;
-void BoneManipulation::OnPinchMove(cv::Point3f point) {
+static void DisplayDebugPoint(cv::Point3f const& point) {
 	if (debug_point == nullptr) {
 		debug_scene = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
 		debug_point = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 3, 3, 10);
@@ -144,14 +174,46 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	}
 	debug_point->setPositionX(kWinWidth * point.x);
 	debug_point->setPositionY(kWinHeight * point.y);
+}
+
+// http://lolengine.net/blog/2013/09/18/beautiful-maths-quaternion-from-vectors
+static Polycode::Quaternion FromTwoVectors(Polycode::Vector3 const& u, Polycode::Vector3 const& v) {
+	auto w = u.crossProduct(v);
+	Polycode::Quaternion q(u.dot(v), w.x, w.y, w.z);
+	q.w += sqrt(q.Norm());
+	q.Normalize();
+	return q;
+}
+
+void BoneManipulation::OnPinchMove(cv::Point3f point) {
+#ifdef _DEBUG
+	DisplayDebugPoint(point);
+#endif
+
 	if (current_target_ == nullptr)
 		return;
 
-	auto diff_xy = Polycode::Vector2(point.x - pinch_prev_.x, point.y - pinch_prev_.y).length();
-	auto diff_z = point.z - pinch_prev_.z;
-	current_target_->bone->Yaw(diff_z * 1);
-	current_target_->bone->Pitch(diff_xy * 1);
-	current_target_->bone->rebuildFinalMatrix();
+	auto from_xy = PinchPointOnWindow(pinch_prev_) - xy_rotation_center_;
+	auto to_xy = PinchPointOnWindow(point) - xy_rotation_center_;
+	auto from = Polycode::Vector3(from_xy.x, from_xy.y, 0);
+	auto to = Polycode::Vector3(to_xy.x, to_xy.y, point.z - pinch_prev_.z); // TODO: find way to handle z
+	from.Normalize(); to.Normalize();
+	std::cout << "On carmera: " << from << " -> " << to << std::endl;
+	auto diff = FromTwoVectors(from, to);
+	auto parents = current_target_->bone->getParentBone()->getConcatenatedQuat();
+	auto mesh_rot = mesh_->getRotationQuat();
+	auto camera_rot = scene_->getActiveCamera()->getConcatenatedQuat();
+	auto new_quot = mesh_rot.Inverse() * camera_rot.Inverse() *
+		diff *
+		camera_rot * mesh_rot *
+		current_target_->bone->getRotationQuat();
+	std::cout << "CameraRot " << scene_->getActiveCamera()->getConcatenatedQuat() << std::endl;
+	std::cout << "model rot " << mesh_->getRotationQuat() << std::endl;
+	std::cout << "rot diff " << camera_rot << std::endl;
+	std::cout << "new_quot " << new_quot << std::endl;
+
+	std::cout << "parents " << parents << std::endl;
+	current_target_->bone->setRotationByQuaternion(new_quot);
 	pinch_prev_ = point;
 }
 
