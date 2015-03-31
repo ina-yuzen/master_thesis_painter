@@ -125,7 +125,7 @@ static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_de
 	};
 }
 
-const int kCalibrationFrames = 15;
+const int kCalibrationFrames = 0; // 0 to disable calibration
 void RSClient::Run() {
 	pxcStatus error;
 
