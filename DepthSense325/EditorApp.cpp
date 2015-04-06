@@ -37,7 +37,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	root->setPositionY(root->getPosition().y - 1); // adjust center to rotate
 
 	auto cam = 	scene->getActiveCamera();
-	cam->setPosition(3, 3, 3);
+	cam->setPosition(0, 0, 5);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
