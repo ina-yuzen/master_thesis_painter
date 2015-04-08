@@ -48,15 +48,8 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 		handle.marker = CreateHandleMarker();
 		handle.bone_id = bone_id_map[handle.bone];
 		handles_.push_back(handle);
-		auto b = handle.bone->getParentBone()->getParentBone()->getParentBone();
-		while (b) {
-			// b->setRotationByQuaternion(Polycode::Quaternion());
-			b = b->getParentBone();
-		}
-		handle.bone->setRotationEuler(Polycode::Vector3(0, 0, 0));
 		scene->addEntity(handle.marker);
 	}
-	// mesh->setRotationEuler(Polycode::Vector3(0, 90, 0));
 
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
@@ -162,11 +155,6 @@ void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	if (current_target_) {
 		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
 		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), current_target_);
-		auto debug_scene = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
-		auto debug_point = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 3, 3, 10);
-		debug_scene->addEntity(debug_point);
-		debug_point->setPositionX(xy_rotation_center_.x);
-		debug_point->setPositionY(xy_rotation_center_.y);
 	}
 }
 
@@ -184,21 +172,7 @@ static void DisplayDebugPoint(cv::Point3f const& point) {
 
 // http://lolengine.net/blog/2013/09/18/beautiful-maths-quaternion-from-vectors
 static Polycode::Quaternion FromTwoVectors(Polycode::Vector3 const& u, Polycode::Vector3 const& v) {
-	/*double norm_u_norm_v = sqrt(u.dot(u) * v.dot(v));
-	double real_part = norm_u_norm_v * u.dot(v);
-	Polycode::Vector3 w;
-	if (real_part < 1.e-6f * norm_u_norm_v)
-    {
-        real_part = 0.0f;
-        w = abs(u.x) > abs(u.z) ? Polycode::Vector3(-u.y, u.x, 0.f)
-                                : Polycode::Vector3(0.f, -u.z, u.y);
-    }
-	else
-    {
-		w = u.crossProduct(v);
-    }
-	Polycode::Quaternion q(real_part, w.x, w.y, w.z);*/
-		auto w = u.crossProduct(v);
+	auto w = u.crossProduct(v);
 	Polycode::Quaternion q(u.dot(v), w.x, w.y, w.z);
 	q.w += sqrt(q.Norm());
 	q.Normalize();
@@ -217,29 +191,17 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	auto from = Polycode::Vector3(from_xy.x, - from_xy.y, 0);
 	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, point.z - pinch_prev_.z); // TODO: find way to handle z
 	from.Normalize(); to.Normalize();
-	std::cout << "On carmera: " << from << " -> " << to << std::endl;
 	auto diff = FromTwoVectors(from, to);
 	Polycode::Quaternion parents, parents_inv;
 	auto parent = current_target_->bone->getParentBone();
 	while (parent) {
-		std::cout << parent->id.getSTLString() << ": " << parent->getRotationQuat() << std::endl;
 		parents = parent->getRotationQuat() * parents;
 		parents_inv = parents_inv * parent->getRotationQuat().Inverse();
 		parent = parent->getParentBone();
 	}
 	auto mesh_rot = mesh_->getRotationQuat();
-	mesh_rot.Normalize();
-	auto camera_rot = scene_->getActiveCamera()->getConcatenatedQuat();
+	// FIXME: Camera rotation is adjusted to [1,0,0,0]
 	auto new_quot = parents_inv * mesh_rot.Inverse() * diff * mesh_rot * parents * current_target_->bone->getRotationQuat();
-	std::cout << "CameraRot " << scene_->getActiveCamera()->getConcatenatedQuat() << std::endl;
-	std::cout << "mesh_rot           " << mesh_rot << std::endl;
-	std::cout << "mesh_rot.Inverse() " << mesh_rot.Inverse() << std::endl;
-	std::cout << "rot diff " << diff << std::endl;
-	std::cout << "true diff " << mesh_rot * diff * mesh_rot.Inverse() <<std::endl;
-	std::cout << "old_quot " << current_target_->bone->getRotationQuat() << std::endl;
-	std::cout << "new_quot " << new_quot << std::endl;
-
-	std::cout << "parents " << parents << std::endl;
 	current_target_->bone->setRotationByQuaternion(new_quot);
 	pinch_prev_ = point;
 }
