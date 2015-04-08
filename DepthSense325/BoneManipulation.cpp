@@ -13,9 +13,9 @@ const int kMovableBonesDepth = 5;
 const std::vector<std::string> kManipulatableBones = ([] {
 	std::vector<std::string> v;
 	v.push_back("Bone.001_R.001");
-	//v.push_back("Bone.001_L.001");
-	//v.push_back("Bone_L.002");
-	//v.push_back("Bone_R.002");
+	v.push_back("Bone.001_L.001");
+	v.push_back("Bone_L.002");
+	v.push_back("Bone_R.002");
 	return v;
 })();
 
@@ -48,15 +48,15 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 		handle.marker = CreateHandleMarker();
 		handle.bone_id = bone_id_map[handle.bone];
 		handles_.push_back(handle);
-		auto b = handle.bone;
+		auto b = handle.bone->getParentBone()->getParentBone()->getParentBone();
 		while (b) {
-			b->setRotationByQuaternion(Polycode::Quaternion());
+			// b->setRotationByQuaternion(Polycode::Quaternion());
 			b = b->getParentBone();
 		}
 		handle.bone->setRotationEuler(Polycode::Vector3(0, 0, 0));
 		scene->addEntity(handle.marker);
 	}
-	mesh->setRotationEuler(Polycode::Vector3(0, 90, 0));
+	// mesh->setRotationEuler(Polycode::Vector3(0, 90, 0));
 
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
@@ -219,22 +219,18 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	from.Normalize(); to.Normalize();
 	std::cout << "On carmera: " << from << " -> " << to << std::endl;
 	auto diff = FromTwoVectors(from, to);
-	auto parents = current_target_->bone->getParentBone()->getConcatenatedQuat();
+	Polycode::Quaternion parents, parents_inv;
 	auto parent = current_target_->bone->getParentBone();
 	while (parent) {
 		std::cout << parent->id.getSTLString() << ": " << parent->getRotationQuat() << std::endl;
+		parents = parent->getRotationQuat() * parents;
+		parents_inv = parents_inv * parent->getRotationQuat().Inverse();
 		parent = parent->getParentBone();
 	}
 	auto mesh_rot = mesh_->getRotationQuat();
 	mesh_rot.Normalize();
 	auto camera_rot = scene_->getActiveCamera()->getConcatenatedQuat();
-	auto new_quot = mesh_rot.Inverse() *
-		diff *
-		mesh_rot *
-		current_target_->bone->getRotationQuat();// *
-		//mesh_rot.Inverse() *
-		//diff.Inverse() *
-		//mesh_rot;
+	auto new_quot = parents_inv * mesh_rot.Inverse() * diff * mesh_rot * parents * current_target_->bone->getRotationQuat();
 	std::cout << "CameraRot " << scene_->getActiveCamera()->getConcatenatedQuat() << std::endl;
 	std::cout << "mesh_rot           " << mesh_rot << std::endl;
 	std::cout << "mesh_rot.Inverse() " << mesh_rot.Inverse() << std::endl;
