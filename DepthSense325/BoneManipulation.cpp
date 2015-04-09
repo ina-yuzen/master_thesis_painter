@@ -118,12 +118,7 @@ std::vector<Polycode::Vector3> CalculateBoneCenters(Polycode::SceneMesh* mesh) {
 	return bone_centers;
 }
 
-void BoneManipulation::Update() {
-	auto bone_centers = CalculateBoneCenters(mesh_);
-	for (auto handle: handles_) {
-		handle.marker->setPosition(bone_centers[handle.bone_id]);
-	}
-}
+volatile bool calculateXyRotationCenter = false;
 
 static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::vector<Polycode::Vector3> const& centers, BoneHandle const* current_target) {
 	assert(current_target->bone->parentBoneId >= 0);
@@ -144,18 +139,25 @@ static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::v
 
 	return (parent_pos + this_pos) * 0.5;
 }
+void BoneManipulation::Update() {
+	auto bone_centers = CalculateBoneCenters(mesh_);
+	for (auto handle: handles_) {
+		handle.marker->setPosition(bone_centers[handle.bone_id]);
+	}
+	if (calculateXyRotationCenter && current_target_) {
+		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
+		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), current_target_);
+		calculateXyRotationCenter = false;
+	}
+}
 
 static Polycode::Vector2 PinchPointOnWindow(cv::Point3f const& point) {
 	return Polycode::Vector2(kWinWidth * point.x, kWinHeight * point.y);
 }
-
 void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	pinch_prev_ = point;
 	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 1.0);
-	if (current_target_) {
-		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
-		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), current_target_);
-	}
+	calculateXyRotationCenter = true; // flag for calculating after that
 }
 
 static Polycode::Scene *debug_scene = nullptr;
