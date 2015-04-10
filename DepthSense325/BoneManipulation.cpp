@@ -56,6 +56,8 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
 	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
 	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+	pinch_start_sound_ = new Polycode::Sound("Resources/click7.wav");
+	pinch_end_sound_ = new Polycode::Sound("Resources/click21.wav");
 }
 
 const int kMouseMiddleButtonCode = 0;
@@ -118,8 +120,6 @@ std::vector<Polycode::Vector3> CalculateBoneCenters(Polycode::SceneMesh* mesh) {
 	return bone_centers;
 }
 
-volatile bool calculateXyRotationCenter = false;
-
 static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::vector<Polycode::Vector3> const& centers, BoneHandle const* current_target) {
 	assert(current_target->bone->parentBoneId >= 0);
 
@@ -144,10 +144,10 @@ void BoneManipulation::Update() {
 	for (auto handle: handles_) {
 		handle.marker->setPosition(bone_centers[handle.bone_id]);
 	}
-	if (calculateXyRotationCenter && current_target_) {
+	if (require_xy_rotation_center_recalculation_ && current_target_) {
 		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
 		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), current_target_);
-		calculateXyRotationCenter = false;
+		require_xy_rotation_center_recalculation_ = false;
 	}
 }
 
@@ -157,7 +157,9 @@ static Polycode::Vector2 PinchPointOnWindow(cv::Point3f const& point) {
 void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	pinch_prev_ = point;
 	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 1.0);
-	calculateXyRotationCenter = true; // flag for calculating after that
+	require_xy_rotation_center_recalculation_ = true; // flag for calculating after that
+	if (current_target_ != nullptr)
+		pinch_start_sound_->Play();
 }
 
 static Polycode::Scene *debug_scene = nullptr;
@@ -191,7 +193,7 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	auto from_xy = PinchPointOnWindow(pinch_prev_) - xy_rotation_center_;
 	auto to_xy = PinchPointOnWindow(point) - xy_rotation_center_;
 	auto from = Polycode::Vector3(from_xy.x, - from_xy.y, 0);
-	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, point.z - pinch_prev_.z); // TODO: find way to handle z
+	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, (pinch_prev_.z - point.z) * 2); // TODO: find way to handle z
 	from.Normalize(); to.Normalize();
 	auto diff = FromTwoVectors(from, to);
 	Polycode::Quaternion parents, parents_inv;
@@ -212,6 +214,7 @@ void BoneManipulation::OnPinchEnd() {
 	if (current_target_) {
 		current_target_->marker->setColor(0.8, 0.5, 0.5, 0.8);
 		current_target_ = nullptr;
+		pinch_end_sound_->Play();
 	}
 }
 

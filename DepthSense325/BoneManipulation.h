@@ -23,12 +23,15 @@ public:
 	void OnPinchEnd();
 	
 private:
+	Polycode::Sound* pinch_start_sound_;
+	Polycode::Sound* pinch_end_sound_;
 	Polycode::Scene *scene_;
 	Polycode::SceneMesh *mesh_;
 	std::vector<BoneHandle> handles_;
 	BoneHandle* current_target_;
 	Polycode::Vector2 xy_rotation_center_;
 	cv::Point3f pinch_prev_;
+	volatile bool require_xy_rotation_center_recalculation_ = false;
 
 	BoneHandle* SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error = 0.1);
 };
