@@ -18,12 +18,12 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	rm->addDirResource("default", false);
 
 	auto scene = new Polycode::Scene();
-	mesh_ = new SceneMesh("Resources/dummy.mesh");
-	mesh_->loadTexture("Resources/dummy.png");
+	mesh_ = new SceneMesh("Resources/out.mesh");
+	mesh_->loadTexture("Resources/empty_texture.png");
 	scene->addEntity(mesh_);
 	scene->useClearColor = false;
 
-	mesh_->loadSkeleton("Resources/dummy.skeleton");
+	mesh_->loadSkeleton("Resources/out.skeleton");
 	auto skeleton = mesh_->getSkeleton();
 	Polycode::Bone* root = nullptr;
 	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
@@ -37,7 +37,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	root->setPositionY(root->getPosition().y - 1); // adjust center to rotate
 
 	auto cam = 	scene->getActiveCamera();
-	cam->setPosition(0, 0, 5);
+	cam->setPosition(0, 0, 20);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));

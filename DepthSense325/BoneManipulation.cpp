@@ -12,10 +12,17 @@ namespace mobamas {
 const int kMovableBonesDepth = 5;	
 const std::vector<std::string> kManipulatableBones = ([] {
 	std::vector<std::string> v;
-	v.push_back("Bone.001_R.001");
-	v.push_back("Bone.001_L.001");
-	v.push_back("Bone_L.002");
-	v.push_back("Bone_R.002");
+	// v.push_back("Bone.001_R.001");
+	// v.push_back("Bone.001_L.001");
+	// v.push_back("Bone_L.002");
+	// v.push_back("Bone_R.002");
+	v.push_back("head");
+	v.push_back("left_hair1");
+	v.push_back("right_hair1");
+	v.push_back("left_arm");
+	v.push_back("right_arm");
+	v.push_back("left_leg");
+	v.push_back("right_leg");
 	return v;
 })();
 
@@ -45,6 +52,7 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 	for (auto name: kManipulatableBones) {
 		BoneHandle handle;
 		handle.bone = skeleton->getBoneByName(name);
+		assert(handle.bone);
 		handle.marker = CreateHandleMarker();
 		handle.bone_id = bone_id_map[handle.bone];
 		handles_.push_back(handle);
