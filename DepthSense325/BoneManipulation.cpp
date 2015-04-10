@@ -16,7 +16,6 @@ const std::vector<std::string> kManipulatableBones = ([] {
 	// v.push_back("Bone.001_L.001");
 	// v.push_back("Bone_L.002");
 	// v.push_back("Bone_R.002");
-	v.push_back("head");
 	v.push_back("left_hair1");
 	v.push_back("right_hair1");
 	v.push_back("left_arm");
@@ -51,10 +50,15 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 	}
 	for (auto name: kManipulatableBones) {
 		BoneHandle handle;
-		handle.bone = skeleton->getBoneByName(name);
-		assert(handle.bone);
+		auto bone = handle.bone = skeleton->getBoneByName(name);
+		assert(bone);
 		handle.marker = CreateHandleMarker();
-		handle.bone_id = bone_id_map[handle.bone];
+		auto child = bone;
+		while (child->getNumChildBones() > 0) {
+			child = child->getChildBone(0);
+		}
+		// Get back one, because miku model's tip bones have no associated vertices.
+		handle.handle_bone_id = bone_id_map[child->getParentBone()];
 		handles_.push_back(handle);
 		scene->addEntity(handle.marker);
 	}
@@ -140,7 +144,7 @@ static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::v
 	auto camera = renderer->getCameraMatrix();
 	auto projection = renderer->getProjectionMatrix();
 	auto view = renderer->getViewport();
-	auto this_pos = renderer->Project(camera, projection, view, centers[current_target->bone_id]);
+	auto this_pos = renderer->Project(camera, projection, view, centers[current_target->handle_bone_id]);
 	auto parent_pos = renderer->Project(camera, projection, view, centers[current_target->bone->parentBoneId]);
 
 	renderer->EndRender();
@@ -150,7 +154,7 @@ static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::v
 void BoneManipulation::Update() {
 	auto bone_centers = CalculateBoneCenters(mesh_);
 	for (auto handle: handles_) {
-		handle.marker->setPosition(bone_centers[handle.bone_id]);
+		handle.marker->setPosition(bone_centers[handle.handle_bone_id]);
 	}
 	if (require_xy_rotation_center_recalculation_ && current_target_) {
 		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);

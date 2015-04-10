@@ -9,7 +9,7 @@ namespace mobamas {
 struct BoneHandle {
 	Polycode::Bone* bone;
 	Polycode::SceneMesh *marker;
-	unsigned int bone_id;
+	unsigned int handle_bone_id;
 };
 
 class BoneManipulation: public Polycode::EventHandler, public PinchEventListener {
