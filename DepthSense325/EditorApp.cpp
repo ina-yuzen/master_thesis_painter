@@ -18,12 +18,12 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	rm->addDirResource("default", false);
 
 	auto scene = new Polycode::Scene();
-	mesh_ = new SceneMesh("Resources/out.mesh");
+	mesh_ = new SceneMesh("Resources/tdamiku.mesh");
 	mesh_->loadTexture("Resources/empty_texture.png");
 	scene->addEntity(mesh_);
 	scene->useClearColor = false;
 
-	mesh_->loadSkeleton("Resources/out.skeleton");
+	mesh_->loadSkeleton("Resources/tdamiku.skeleton");
 	auto skeleton = mesh_->getSkeleton();
 	Polycode::Bone* root = nullptr;
 	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
