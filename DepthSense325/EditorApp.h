@@ -5,8 +5,8 @@
 
 namespace mobamas {
 
-const int kWinHeight = 480;
-const int kWinWidth = 640;
+const int kWinHeight = 1920/1.5;
+const int kWinWidth = 1080/1.5;
 
 struct Context;
 class BoneManipulation;

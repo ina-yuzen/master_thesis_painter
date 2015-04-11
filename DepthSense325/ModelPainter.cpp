@@ -170,7 +170,9 @@ static Polycode::Vector2 PaintTexture(Polycode::SceneMesh *mesh, Polycode::Vecto
 		}
 		break;
 	}
+#ifdef _DEBUG
 	cv::imshow("win", tex_mat);
+#endif
 	texture->recreateFromImageData();
 	return tc;
 }

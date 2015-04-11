@@ -168,7 +168,7 @@ static Polycode::Vector2 PinchPointOnWindow(cv::Point3f const& point) {
 }
 void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	pinch_prev_ = point;
-	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 1.0);
+	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 10.0);
 	require_xy_rotation_center_recalculation_ = true; // flag for calculating after that
 	if (current_target_ != nullptr)
 		pinch_start_sound_->Play();
@@ -205,7 +205,7 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	auto from_xy = PinchPointOnWindow(pinch_prev_) - xy_rotation_center_;
 	auto to_xy = PinchPointOnWindow(point) - xy_rotation_center_;
 	auto from = Polycode::Vector3(from_xy.x, - from_xy.y, 0);
-	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, (pinch_prev_.z - point.z) * 0.75); // TODO: find way to handle z
+	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, (pinch_prev_.z - point.z) * 0.75);
 	from.Normalize(); to.Normalize();
 	auto diff = FromTwoVectors(from, to);
 	Polycode::Quaternion parents, parents_inv;
