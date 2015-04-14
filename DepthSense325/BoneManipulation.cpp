@@ -10,19 +10,27 @@
 namespace mobamas {
 
 const int kMovableBonesDepth = 5;	
-const std::vector<std::string> kManipulatableBones = ([] {
-	std::vector<std::string> v;
-	// v.push_back("Bone.001_R.001");
-	// v.push_back("Bone.001_L.001");
-	// v.push_back("Bone_L.002");
-	// v.push_back("Bone_R.002");
-	v.push_back("left_hair1");
-	v.push_back("right_hair1");
-	v.push_back("left_arm");
-	v.push_back("right_arm");
-	v.push_back("left_leg");
-	v.push_back("right_leg");
-	return v;
+const std::map<Models, std::vector<std::string>> kManipulatableBones = ([] {
+	std::map<Models, std::vector<std::string>> map;
+	{
+		std::vector<std::string> v;
+		v.push_back("Bone.001_R.001");
+		v.push_back("Bone.001_L.001");
+		v.push_back("Bone_L.002");
+		v.push_back("Bone_R.002");
+		map[Models::ROBOT] = v;
+	}
+	{
+		std::vector<std::string> v;
+		v.push_back("left_hair1");
+		v.push_back("right_hair1");
+		v.push_back("left_arm");
+		v.push_back("right_arm");
+		v.push_back("left_leg");
+		v.push_back("right_leg");
+		map[Models::MIKU] = v;
+	}
+	return map;
 })();
 
 Polycode::ScenePrimitive* CreateHandleMarker() {
@@ -33,7 +41,7 @@ Polycode::ScenePrimitive* CreateHandleMarker() {
 	return marker;
 }
 
-BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *mesh) :
+BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model) :
 	EventHandler(),
 	scene_(scene),
 	mesh_(mesh),
@@ -48,7 +56,7 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 		bone_id_map[b] = bidx;
 		b->disableAnimation = true;
 	}
-	for (auto name: kManipulatableBones) {
+	for (auto name: kManipulatableBones.at(model)) {
 		BoneHandle handle;
 		auto bone = handle.bone = skeleton->getBoneByName(name);
 		assert(bone);
@@ -65,9 +73,11 @@ BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *
 
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
-	// input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
-	// input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
-	// input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+#ifdef _DEBUG
+	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
+	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+#endif
 	pinch_start_sound_ = new Polycode::Sound("Resources/click7.wav");
 	pinch_end_sound_ = new Polycode::Sound("Resources/click21.wav");
 }
@@ -165,7 +175,6 @@ void BoneManipulation::Update() {
 
 static Polycode::Vector2 PinchPointOnWindow(cv::Point3f const& point) {
 	return CameraPointToScreen(point.x, point.y);
-	// return Polycode::Vector2(kWinWidth * point.x, kWinHeight * point.y);
 }
 void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	pinch_prev_ = point;
@@ -211,8 +220,8 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	cached_points_->push_back(point);
 	cached_points_->pop_front();
 	cv::Point3f point_new;
-	for (auto idx = cached_points_->begin(); idx < cached_points_->end(); idx++) {
-		point_new += *idx;
+	for (const auto point : *cached_points_) {
+		point_new += point;
 	}
 	point_new *= (1 / 6.0f);
 	auto from_xy = PinchPointOnWindow(pinch_prev_) - xy_rotation_center_;

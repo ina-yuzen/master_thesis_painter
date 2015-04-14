@@ -3,10 +3,32 @@
 #include "BoneManipulation.h"
 #include "Context.h"
 #include "HandVisualization.h"
+#include "Models.h"
 #include "ModelRotation.h"
 #include "ModelPainter.h"
 
 namespace mobamas {
+
+Polycode::SceneMesh* LoadMesh(Models model) {
+	Polycode::SceneMesh* mesh;
+	switch (model) {
+	case Models::MIKU:
+		mesh = new SceneMesh("Resources/tdamiku.mesh");
+		mesh->loadTexture("Resources/empty_texture.png");
+		mesh->loadSkeleton("Resources/tdamiku.skeleton");
+		break;
+	case Models::ROBOT:
+		mesh = new SceneMesh("Resources/dummy.mesh");
+		mesh->loadTexture("Resources/dummy.png");
+		mesh->loadSkeleton("Resources/dummy.skeleton");
+		break;
+	default:
+		std::cout << "Unknown model" << std::endl;
+		assert(false);
+		break;
+	}
+	return mesh;
+}
 
 EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	core_ = new POLYCODE_CORE(view, kWinWidth, kWinHeight, false, true, 0, 0, 90);
@@ -18,12 +40,11 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	rm->addDirResource("default", false);
 
 	auto scene = new Polycode::Scene();
-	mesh_ = new SceneMesh("Resources/tdamiku.mesh");
-	mesh_->loadTexture("Resources/empty_texture.png");
+
+	mesh_ = LoadMesh(context->model);
 	scene->addEntity(mesh_);
 	scene->useClearColor = false;
 
-	mesh_->loadSkeleton("Resources/tdamiku.skeleton");
 	auto skeleton = mesh_->getSkeleton();
 	Polycode::Bone* root = nullptr;
 	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
@@ -41,7 +62,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
-	bone_manipulation_.reset(new BoneManipulation(scene, mesh_));
+	bone_manipulation_.reset(new BoneManipulation(scene, mesh_, context->model));
 	painter_.reset(new ModelPainter(scene, mesh_));
 	rotation_.reset(new ModelRotation(mesh_));
 

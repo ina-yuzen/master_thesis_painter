@@ -4,6 +4,7 @@
 #include <queue>
 
 #include "CameraEventListeners.h"
+#include "Models.h"
 
 namespace mobamas {
 
@@ -15,7 +16,7 @@ struct BoneHandle {
 
 class BoneManipulation: public Polycode::EventHandler, public PinchEventListener {
 public:
-	BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *mesh);
+	BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model);
 	void handleEvent(Polycode::Event *e) override;
 	void Update();
 

@@ -1,6 +1,7 @@
 #include "Context.h"
 #include "DepthMap.h"
 #include "EditorApp.h"
+#include "Models.h"
 #include "Recorder.h"
 #include "RSClient.h"
 
@@ -29,8 +30,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 #endif
 
+	mobamas::Models model = mobamas::Models::ROBOT;
+	if (strcmp(lpCmdLine, "miku") == 0)
+		model = mobamas::Models::MIKU;
+
 	auto context = std::make_shared<mobamas::Context>();
 	auto client = std::make_shared<mobamas::RSClient>(context);
+	context->model = model;
 	context->rs_client = client;
 	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
 
