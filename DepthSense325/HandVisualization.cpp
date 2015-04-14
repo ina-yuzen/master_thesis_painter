@@ -2,6 +2,7 @@
 
 #include "EditorApp.h"
 #include "RSClient.h"
+#include "Util.h"
 
 namespace mobamas {
 
@@ -34,7 +35,7 @@ void HandVisualization::Update() {
 			if (val == 0)
 				continue;
 			auto ray = scene_->projectRayFromCameraAndViewportCoordinate(
-				scene_->getActiveCamera(), Polycode::Vector2(x * x_ratio, y * y_ratio));
+				scene_->getActiveCamera(), CameraPointToScreen(x / static_cast<float>(src_width), y / static_cast<float>(src_height)));
 			auto point = ray.origin + ray.direction * (val * kDepthRatio);
 			raw->addVertex(point.x, point.y, point.z);
 		}

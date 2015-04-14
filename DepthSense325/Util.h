@@ -10,6 +10,7 @@ struct DepthMap;
 std::vector<Polycode::Vector3> ActualVertexPositions(Polycode::SceneMesh *mesh);
 void DisplayPinchMats(DepthMap const& depth_map, Option<cv::Point3f> const& pinch_point);
 void ReportPxcBadStatus(const pxcStatus& status);
+Polycode::Vector2 CameraPointToScreen(Number x, Number y);
 
 // debug printers
 std::ostream& operator<<(std::ostream& os, Polycode::Matrix4 const& mat);
