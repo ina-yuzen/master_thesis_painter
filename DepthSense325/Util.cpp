@@ -182,7 +182,8 @@ namespace mobamas {
 	}
 
 	Polycode::Vector2 CameraPointToScreen(Number x, Number y) {
-		return Polycode::Vector2((x - 0.3) * 5 / 2 * kWinWidth, y * kWinHeight);
+		return Polycode::Vector2(x*kWinWidth, y * kWinHeight);
+		//return Polycode::Vector2((x - 0.3) * 5 / 2 * kWinWidth, y * kWinHeight);
 	}
 
 }

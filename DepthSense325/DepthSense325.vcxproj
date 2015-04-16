@@ -48,6 +48,7 @@
     <ClInclude Include="CameraEventListeners.h" />
     <ClInclude Include="DepthMap.h" />
     <ClInclude Include="HandVisualization.h" />
+    <ClInclude Include="Models.h" />
     <ClInclude Include="Option.h" />
     <ClInclude Include="PinchTracker.h" />
     <ClInclude Include="RSClient.h" />

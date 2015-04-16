@@ -21,6 +21,7 @@ Polycode::SceneMesh* LoadMesh(Models model) {
 		mesh = new SceneMesh("Resources/dummy.mesh");
 		mesh->loadTexture("Resources/dummy.png");
 		mesh->loadSkeleton("Resources/dummy.skeleton");
+		mesh->Scale(3, 3, 3);
 		break;
 	default:
 		std::cout << "Unknown model" << std::endl;
