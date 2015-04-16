@@ -14,7 +14,7 @@ Polycode::SceneMesh* LoadMesh(Models model) {
 	switch (model) {
 	case Models::MIKU:
 		mesh = new SceneMesh("Resources/tdamiku.mesh");
-		mesh->loadTexture("Resources/empty_texture.png");
+		mesh->loadTexture("Resources/tdamiku.png");
 		mesh->loadSkeleton("Resources/tdamiku.skeleton");
 		break;
 	case Models::ROBOT:
