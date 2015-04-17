@@ -1,12 +1,16 @@
 #pragma once
-#include <Polycode.h>
-#include <vector>
+#include <memory>
 #include <queue>
+#include <vector>
+
+#include <Polycode.h>
 
 #include "CameraEventListeners.h"
 #include "Models.h"
 
 namespace mobamas {
+
+struct Context;
 
 struct BoneHandle {
 	Polycode::Bone* bone;
@@ -16,7 +20,7 @@ struct BoneHandle {
 
 class BoneManipulation: public Polycode::EventHandler, public PinchEventListener {
 public:
-	BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model);
+	BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model);
 	void handleEvent(Polycode::Event *e) override;
 	void Update();
 
@@ -25,6 +29,7 @@ public:
 	void OnPinchEnd();
 	
 private:
+	std::shared_ptr<Context> context_;
 	Polycode::Sound* pinch_start_sound_;
 	Polycode::Sound* pinch_end_sound_;
 	Polycode::Scene *scene_;

@@ -1,20 +1,23 @@
 #include "ModelPainter.h"
 
+#include <ctime>
 #include <opencv2\opencv.hpp>
 
+#include "Context.h"
 #include "PenPicker.h"
 #include "Util.h"
 
 namespace mobamas {
 
-ModelPainter::ModelPainter(Polycode::Scene *scene, Polycode::SceneMesh *mesh) :
+ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, Polycode::SceneMesh *mesh) :
+	context_(context),
 	EventHandler(),
 	scene_(scene),
 	mesh_(mesh),
 	prev_tc_(),
 	left_clicking_(false)
 {
-	picker_.reset(new PenPicker());
+	picker_.reset(new PenPicker(context));
 
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
@@ -194,8 +197,10 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 
 	auto set_click_state = [&](bool new_val) {
 		InputEvent *ie = (InputEvent*)e;
-		if (ie->mouseButton == kMouseLeftButtonCode)
+		if (ie->mouseButton == kMouseLeftButtonCode) {
 			left_clicking_ = new_val;
+			context_->logfs << time(nullptr) << ": Paint" << (new_val ? "Start" : "End") << std::endl;
+		}
 		prev_tc_.release();
 	};
 

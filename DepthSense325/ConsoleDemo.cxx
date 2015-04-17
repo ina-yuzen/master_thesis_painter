@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "Context.h"
 #include "DepthMap.h"
 #include "EditorApp.h"
@@ -39,6 +41,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	context->model = model;
 	context->rs_client = client;
 	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
+
+	time_t tm;
+	time(&tm);
+	context->logfs.open("logs\\" + std::to_string(tm) + ".log", std::ios::out | std::ios::trunc);
+	context->logfs << tm << ": Start with model " << model << std::endl;
 
 	auto view = new Polycode::PolycodeView(hInstance, nCmdShow, L"MOBAM@S");
 	mobamas::EditorApp app(view, context);
@@ -85,5 +92,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			break;
 		}
 	}
+	time(&tm);
+	context->logfs << time(nullptr) << ": End" << std::endl;
+	context->logfs.close();
 	return Msg.wParam;
 }

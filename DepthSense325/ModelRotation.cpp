@@ -1,14 +1,18 @@
 #include "ModelRotation.h"
 
+#include <ctime>
 #include <PolyWinCore.h>
 #include <iostream>
+
+#include "Context.h"
 
 namespace mobamas {
 
 const int kDistance = sqrt(27.0);
 const double kSensitivity = 1;
 
-ModelRotation::ModelRotation(Polycode::SceneMesh *mesh): 
+ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::SceneMesh *mesh): 
+	context_(context),
 	EventHandler(), 
 	mesh_(mesh),
 	moving_(false)
@@ -70,13 +74,16 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 				moving_ = true;
 				mouse_prev_ = touches[0].position;
 				operation_ = Operation::ROTATE;
+				context_->logfs << time(nullptr) << ": RotationStart" << std::endl;
 				break;
 			case 2:
 				moving_ = true;
 				distance_prev_ = touches[0].position.distance(touches[1].position);
 				operation_ = Operation::SCALE;
+				context_->logfs << time(nullptr) << ": ScaleStart" << std::endl;
 				break;
 			default:
+				context_->logfs << time(nullptr) << ": " << (operation_ == Operation::ROTATE ? "Rotation" : "Scale") << "Start" << std::endl;
 				moving_ = false;
 				break;
 			}

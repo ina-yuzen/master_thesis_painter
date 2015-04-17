@@ -63,9 +63,9 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
-	bone_manipulation_.reset(new BoneManipulation(scene, mesh_, context->model));
-	painter_.reset(new ModelPainter(scene, mesh_));
-	rotation_.reset(new ModelRotation(mesh_));
+	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
+	painter_.reset(new ModelPainter(context, scene, mesh_));
+	rotation_.reset(new ModelRotation(context, mesh_));
 
 	context->pinch_listeners = bone_manipulation_;
 }

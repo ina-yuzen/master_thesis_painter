@@ -2,8 +2,10 @@
 
 #include <functional>
 #include <string>
+#include <ctime>
 #include <vector>
 
+#include "Context.h"
 #include "EditorApp.h"
 #include "Util.h"
 
@@ -41,7 +43,8 @@ Polycode::ScenePrimitive* CreateHandleMarker() {
 	return marker;
 }
 
-BoneManipulation::BoneManipulation(Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model) :
+BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model) :
+    context_(context),
 	EventHandler(),
 	scene_(scene),
 	mesh_(mesh),
@@ -185,8 +188,10 @@ void BoneManipulation::OnPinchStart(cv::Point3f point) {
 
 	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 10.0);
 	require_xy_rotation_center_recalculation_ = true; // flag for calculating after that
-	if (current_target_ != nullptr)
+	if (current_target_ != nullptr) {
+		context_->logfs << time(nullptr) << ": PinchStart " << point.x << ", " << point.y << ", " << point.z << ": " << current_target_->handle_bone_id << std::endl;
 		pinch_start_sound_->Play();
+	}
 }
 
 static Polycode::Scene *debug_scene = nullptr;
@@ -246,6 +251,7 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 
 void BoneManipulation::OnPinchEnd() {
 	if (current_target_) {
+		context_->logfs << time(nullptr) << ": PinchEnd : " << current_target_->handle_bone_id << std::endl;
 		current_target_->marker->setColor(0.8, 0.5, 0.5, 0.8);
 		current_target_ = nullptr;
 		pinch_end_sound_->Play();

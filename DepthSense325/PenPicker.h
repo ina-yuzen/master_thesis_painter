@@ -8,9 +8,11 @@ enum Brush {
 	PEN, STAMP
 };
 
+struct Context;
+
 class PenPicker: public Polycode::EventHandler {
 public:
-	PenPicker();
+	PenPicker(std::shared_ptr<Context> context);
 	void handleEvent(Polycode::Event *e) override;
 	Brush current_brush() { return current_brush_; }
 	Polycode::Color current_color() { return current_color_; }
@@ -19,6 +21,7 @@ public:
 
 private:
 	static const std::vector<Polycode::Color> kPalette;
+	std::shared_ptr<Context> context_;
 	Polycode::Scene *scene_;
 	Brush current_brush_;
 	Polycode::Color current_color_;

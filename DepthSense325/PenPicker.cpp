@@ -1,4 +1,8 @@
 #include "PenPicker.h"
+
+#include <ctime>
+
+#include "Context.h"
 #include "EditorApp.h"
 
 namespace mobamas {
@@ -30,7 +34,11 @@ const std::vector<Polycode::Color> PenPicker::kPalette = ([] {
 const int kMaxSizeStep = 4;
 
 const int kSize = 30;
-PenPicker::PenPicker(): Polycode::EventHandler(), current_brush_(Brush::PEN) {
+PenPicker::PenPicker(std::shared_ptr<Context> context): 
+	context_(context),
+	Polycode::EventHandler(), 
+	current_brush_(Brush::PEN) 
+{
 	scene_ = new Polycode::Scene(Polycode::Scene::SCENE_2D_TOPLEFT);
 	scene_->getActiveCamera()->setOrthoSize(kWinWidth, kWinHeight);
 	scene_->useClearColor = false;
@@ -103,6 +111,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 		if (IsClicking(point, color_pick)) {
 			current_brush_ = Brush::PEN;
 			current_color_ = color_pick->color;
+			context_->logfs << time(nullptr) << ": PenColorChanged " << current_color_.r << ", " << current_color_.g << ", " << current_color_.b << std::endl;
 			UpdateCursorStyle();
 			break;
 		}
@@ -112,6 +121,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 			current_brush_ = Brush::PEN;
 			auto size = size_pick->getPrimitiveParameter1();
 			current_size_ = (int)(size / 5) - 1;
+			context_->logfs << time(nullptr) << ": PenSizeChanged " << current_size_ << std::endl;
 			UpdateCursorStyle();
 			break;
 		}
@@ -120,6 +130,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 		if (IsClicking(point, pick)) {
 			current_brush_ = Brush::STAMP;
 			current_stamp_ = pick->getTexture();
+			context_->logfs << time(nullptr) << ": StampPicked" << std::endl;
 			UpdateCursorStyle();
 			break;
 		}
