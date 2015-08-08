@@ -23,6 +23,7 @@ public:
 private:
 	Polycode::Core *core_;
 	Polycode::SceneMesh *mesh_;
+	Polycode::Entity *mesh2_;
 	std::shared_ptr<BoneManipulation> bone_manipulation_;
 	std::unique_ptr<HandVisualization> hand_visualization_;
 	std::unique_ptr<ModelRotation> rotation_;

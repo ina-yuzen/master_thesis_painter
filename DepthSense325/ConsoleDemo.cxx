@@ -33,7 +33,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 
 	mobamas::Models model = mobamas::Models::ROBOT;
-	if (strcmp(lpCmdLine, "miku") == 0)
+	//if (strcmp(lpCmdLine, "miku") == 0)
 		model = mobamas::Models::MIKU;
 
 	auto context = std::make_shared<mobamas::Context>();

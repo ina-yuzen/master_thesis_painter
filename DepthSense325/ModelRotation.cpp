@@ -11,7 +11,7 @@ namespace mobamas {
 const int kDistance = sqrt(27.0);
 const double kSensitivity = 1;
 
-ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::SceneMesh *mesh): 
+ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh): 
 	context_(context),
 	EventHandler(), 
 	mesh_(mesh),

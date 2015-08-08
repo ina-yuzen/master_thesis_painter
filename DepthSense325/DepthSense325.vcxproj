@@ -30,6 +30,7 @@
   <ItemGroup>
     <ClCompile Include="BoneManipulation.cpp" />
     <ClCompile Include="HandVisualization.cpp" />
+    <ClCompile Include="Import.cpp" />
     <ClCompile Include="ModelRotation.cpp" />
     <ClCompile Include="PenPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
@@ -48,6 +49,7 @@
     <ClInclude Include="CameraEventListeners.h" />
     <ClInclude Include="DepthMap.h" />
     <ClInclude Include="HandVisualization.h" />
+    <ClInclude Include="Import.h" />
     <ClInclude Include="Models.h" />
     <ClInclude Include="Option.h" />
     <ClInclude Include="PinchTracker.h" />
@@ -104,7 +106,7 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\..\..\Program Files (x86)\Intel\RSSDK\props\VS2010-13.Integration.MD.props" />
+    <Import Project="C:\Program Files (x86)\Intel\RSSDK\props\VS2010-13.Integration.MD.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -114,18 +116,18 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include\freetype2;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\include;C:\Users\Natsumi\Documents\assimp\include;$(IncludePath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\lib;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>winmm.lib;ws2_32.lib;opengl32.lib;glu32.lib;Polycore_d.lib;zlibd.lib;freetype_d.lib;liboggd.lib;libvorbisd.lib;libvorbisfiled.lib;OpenAL32d.lib;kernel32.lib;physfsd.lib;libpng15_staticd.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\lib;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\lib;C:\Users\Natsumi\Documents\assimp\_build\code\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;ws2_32.lib;opengl32.lib;glu32.lib;Polycore_d.lib;zlibd.lib;freetype_d.lib;liboggd.lib;libvorbisd.lib;libvorbisfiled.lib;OpenAL32d.lib;kernel32.lib;physfsd.lib;libpng15_staticd.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;assimp-vc120-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)..\Polycode\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
+      <Command>xcopy /Y "$(SolutionDir)..\Polycode-master\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -135,21 +137,25 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include\freetype2;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\PolycodeView;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\lib;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\lib;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;ws2_32.lib;opengl32.lib;glu32.lib;Polycore.lib;zlibd.lib;freetype_d.lib;liboggd.lib;libvorbisd.lib;libvorbisfiled.lib;OpenAL32d.lib;kernel32.lib;physfsd.lib;libpng15_staticd.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y "$(SolutionDir)..\Polycode-master\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode\Release\Windows\Framework\Core\include;C:\Program Files\SoftKinetic\DepthSenseSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include\AL;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\Dependencies\include;$(SolutionDir)\..\Polycode-master\Release\Windows\Framework\Core\include;C:\Program Files\SoftKinetic\DepthSenseSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level2</WarningLevel>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
