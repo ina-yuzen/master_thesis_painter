@@ -96,7 +96,8 @@
       <SubSystem>Windows</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)..\Polycode-master\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
+      <Command>xcopy /Y "$(POLYCODE_DIR)\Release\Windows\Framework\Core\Dependencies\bin\OpenAL32d.dll" $(OutputPath)
+xcopy /Y "$(ASSIMP_DIR)\_build\code\Debug\assimp-vc120-mtd.dll" $(OutputPath)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
