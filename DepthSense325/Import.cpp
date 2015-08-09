@@ -16,16 +16,10 @@ namespace filesystem = std::tr2::sys;
 namespace filesystem = boost::filesystem;
 #endif
 
-bool hasWeights = false;
-std::vector<aiBone*> bones;
-std::unordered_map<aiBone*, unsigned int> bones_inverted;
-unsigned int numBones = 0;
-filesystem::path file_path;
-
 class RandomAccessSkeleton : public Polycode::Skeleton {
 public:
 	void addBone(Polycode::Bone* bone, size_t id) {
-		if (bones.size() < id) {
+		if (bones.size() <= id) {
 			bones.resize(id + 1);
 		}
 		bones[id] = bone;
@@ -42,18 +36,11 @@ private:
 	Polycode::Skeleton* skeleton;
 };
 
-unsigned int addBone(aiBone *bone) {
-	auto found = bones_inverted.find(bone);
-	if (found == bones_inverted.end()) {
-		bones.push_back(bone);
-		int id = bones.size() - 1;
-		bones_inverted[bone] = id;
-		return id;
-	}
-	else {
-		return found->second;
-	}
-}
+struct BoneAssignment {
+	float weights[4];
+	unsigned int boneIds[4];
+};
+typedef std::vector<std::vector<BoneAssignment>> BoneAssignments;
 
 aiMatrix4x4 getFullTransform(const struct aiNode *nd) {
 	if (nd->mParent) {
@@ -75,22 +62,90 @@ Polycode::Material* createMaterial(std::string name) {
 	return mat;
 }
 
-MeshGroup* buildMesh(const struct aiScene *sc, const struct aiNode* nd) {
-	auto group = new MeshGroup();
+class ModelLoader {
+public:
+	ModelLoader(std::string path) : file_path_(path) {}
+	MeshGroup* loadMesh();
+	
+private:
+	const filesystem::path file_path_;
+	const struct aiScene* sc_;
+	MeshGroup* group_;
+	bool has_weights_ = false;
+	std::vector<aiBone*> bones_;
+	std::unordered_map<aiBone*, unsigned int> bones_inverted_;
+	unsigned int num_bones_ = 0;
+	BoneAssignments bone_assignments_;
+	bool bone_assignments_cached_;
+	int mesh_index_ = -1;
+
+	unsigned int addBone(aiBone *bone);
+	unsigned int ModelLoader::getBoneID(aiString name);
+	void buildMesh(const struct aiNode* nd);
+	void buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd);
+	void loadBoneAssignmentsCache();
+	void saveBoneAssignmentsCache();
+};
+
+unsigned int ModelLoader::addBone(aiBone *bone) {
+	auto found = bones_inverted_.find(bone);
+	if (found == bones_inverted_.end()) {
+		bones_.push_back(bone);
+		int id = bones_.size() - 1;
+		bones_inverted_[bone] = id;
+		return id;
+	} else {
+		return found->second;
+	}
+}
+
+unsigned int ModelLoader::getBoneID(aiString name) {
+	for (unsigned int i = 0; i < bones_.size(); i++) {
+		if (bones_[i]->mName == name) {
+			return i;
+		}
+	}
+	auto dummy = new aiBone();
+	dummy->mName = name;
+	return addBone(dummy);
+}
+
+void ModelLoader::buildMesh(const struct aiNode* nd) {
 	int i, nIgnoredPolygons = 0;
 
 	// draw all meshes assigned to this node
 	for (size_t n = 0; n < nd->mNumMeshes; ++n) {
-		Polycode::SceneMesh *scene_mesh = new Polycode::SceneMesh(Polycode::Mesh::TRI_MESH);
-		Polycode::Mesh *tmesh = scene_mesh->getMesh();
+		Polycode::SceneMesh *sc__mesh = new Polycode::SceneMesh(Polycode::Mesh::TRI_MESH);
+		Polycode::Mesh *tmesh = sc__mesh->getMesh();
 		tmesh->indexedMesh = true;
 
-		const aiMesh* mesh = sc->mMeshes[nd->mMeshes[n]];
+		const aiMesh* mesh = sc_->mMeshes[nd->mMeshes[n]];
+		mesh_index_ ++;
 
-		std::cout << "Importing mesh:" << std::string(mesh->mName.C_Str())
-			<< " (" << mesh->mNumVertices << " vertices)"
+		std::cout << "Importing mesh " << mesh_index_ << ":";
+#ifdef _WINDOWS
+		const char* ptr = mesh->mName.C_Str();
+		int wchars_num = MultiByteToWideChar(CP_UTF8, 0, ptr, -1, NULL, 0);
+		wchar_t* wstr = new wchar_t[wchars_num];
+		MultiByteToWideChar(CP_UTF8, 0, ptr, -1, wstr, wchars_num);
+		std::wcout << wstr;
+		delete[] wstr;
+		std::wcout.flush();
+#else
+		std::cout << std::string(mesh->mName.C_Str());
+		std::cout.flush();
+#endif
+		std::cout << " (" << mesh->mNumVertices << " vertices)"
 			<< " (" << mesh->mNumFaces << " faces)" << std::endl;
 
+		if (bone_assignments_cached_ && bone_assignments_[mesh_index_].size() != mesh->mNumVertices) {
+			std::cerr << "Bone assignments and vertices count mismatch. Invalidating cache." << std::endl;
+			bone_assignments_cached_ = false;
+		}
+		if (!bone_assignments_cached_) {
+			bone_assignments_.resize(mesh_index_ + 1);
+			bone_assignments_[mesh_index_].reserve(mesh->mNumVertices);
+		}
 		for (size_t t = 0; t < mesh->mNumVertices; ++t) {
 			int index = t;
 			if (mesh->mColors[0] != NULL) {
@@ -113,27 +168,35 @@ MeshGroup* buildMesh(const struct aiScene *sc, const struct aiNode* nd) {
 				tmesh->addTexCoord2(mesh->mTextureCoords[1][index].x, mesh->mTextureCoords[1][index].y);
 			}
 
-			int numAssignments = 0;
+			BoneAssignment ass;
+			if (bone_assignments_cached_) {
+				ass = bone_assignments_[mesh_index_][t];
+			}
+			else {
+				int numAssignments = 0;
 
-			float weights[4] = { 0.0, 0.0, 0.0, 0.0 };
-			unsigned int boneIds[4] = { 0, 0, 0, 0 };
+				// VERRRRRRRRRY heavy, file cache is required for production use
+				for (unsigned int a = 0; a < mesh->mNumBones; a++) {
+					aiBone* bone = mesh->mBones[a];
+					unsigned int boneIndex = addBone(bone);
 
-			// VERRRRRRRRRY heavy, file cache is required for production use
-			for (unsigned int a = 0; a < mesh->mNumBones; a++) {
-				aiBone* bone = mesh->mBones[a];
-				unsigned int boneIndex = addBone(bone);
-
-				for (unsigned int b = 0; b < bone->mNumWeights && numAssignments < 4; b++) {
-					if (bone->mWeights[b].mVertexId == index) {
-						weights[numAssignments] = bone->mWeights[b].mWeight;
-						boneIds[numAssignments] = boneIndex;
-						numAssignments++;
-						hasWeights = true;
+					for (unsigned int b = 0; b < bone->mNumWeights && numAssignments < 4; b++) {
+						if (bone->mWeights[b].mVertexId == index) {
+							ass.weights[numAssignments] = bone->mWeights[b].mWeight;
+							ass.boneIds[numAssignments] = boneIndex;
+							numAssignments++;
+							has_weights_ = true;
+						}
 					}
 				}
+				bone_assignments_[mesh_index_].push_back(ass);
 			}
 
-			tmesh->addBoneAssignments(weights[0], boneIds[0], weights[1], boneIds[1], weights[2], boneIds[2], weights[3], boneIds[3]);
+			tmesh->addBoneAssignments(
+				ass.weights[0], ass.boneIds[0], 
+				ass.weights[1], ass.boneIds[1], 
+				ass.weights[2], ass.boneIds[2], 
+				ass.weights[3], ass.boneIds[3]);
 			tmesh->addVertex(mesh->mVertices[index].x, mesh->mVertices[index].y, mesh->mVertices[index].z);
 		}
 
@@ -164,15 +227,15 @@ MeshGroup* buildMesh(const struct aiScene *sc, const struct aiNode* nd) {
 		// TODO: set position, scale, rotation if required
 		fullTransform.Decompose(s, r, p);
 
-		scene_mesh->setLocalBoundingBox(tmesh->calculateBBox());
+		sc__mesh->setLocalBoundingBox(tmesh->calculateBBox());
 
-		auto ai_mat = sc->mMaterials[mesh->mMaterialIndex];
+		auto ai_mat = sc_->mMaterials[mesh->mMaterialIndex];
 		int tex_index = 0;
 		aiString tex_location;
 		if (AI_SUCCESS == ai_mat->GetTexture(aiTextureType_DIFFUSE, tex_index, &tex_location)) {
 			filesystem::path tex_path(tex_location.C_Str());
 			if (!tex_path.is_complete()) {
-				tex_path = file_path.parent_path();
+				tex_path = file_path_.parent_path();
 				tex_path /= tex_location.C_Str();
 			}
 			std::string path = tex_path;
@@ -181,7 +244,7 @@ MeshGroup* buildMesh(const struct aiScene *sc, const struct aiNode* nd) {
 			wchar_t* wstr = new wchar_t[wchars_num];
 			MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, wstr, wchars_num);
 			// do whatever with wstr
-			scene_mesh->loadTexture(wstr);
+			sc__mesh->loadTexture(wstr);
 			delete[] wstr;
 		}
 
@@ -191,8 +254,8 @@ MeshGroup* buildMesh(const struct aiScene *sc, const struct aiNode* nd) {
 			mat_name = std::string(str.C_Str());
 		}
 		auto poly_mat = createMaterial(mat_name);
-		scene_mesh->setMaterial(poly_mat);
-		Polycode::ShaderBinding *binding = scene_mesh->getLocalShaderOptions();
+		sc__mesh->setMaterial(poly_mat);
+		Polycode::ShaderBinding *binding = sc__mesh->getLocalShaderOptions();
 		aiColor4D color;
 		if (AI_SUCCESS == ai_mat->Get(AI_MATKEY_COLOR_DIFFUSE, color)) {
 			binding
@@ -220,26 +283,16 @@ MeshGroup* buildMesh(const struct aiScene *sc, const struct aiNode* nd) {
 			std::cerr << "Ignored " << nIgnoredPolygons << " non-triangular polygons" << std::endl;
 		}
 
-		group->addChild(scene_mesh);
+		group_->addChild(sc__mesh);
 	}
 
-	// draw all children
+	// drill down to all children
 	for (size_t n = 0; n < nd->mNumChildren; ++n) {
-		group->addChild(buildMesh(sc, nd->mChildren[n]));
+		buildMesh(nd->mChildren[n]);
 	}
-	return group;
 }
 
-int getBoneID(aiString name) {
-	for (int i = 0; i < bones.size(); i++) {
-		if (bones[i]->mName == name) {
-			return i;
-		}
-	}
-	return 666;
-}
-
-void buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiScene *sc, const struct aiNode* nd) {
+void ModelLoader::buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd) {
 	auto name = nd->mName;
 	auto *bone = new Polycode::Bone(name.C_Str());
 	bone->setParentBone(parent);
@@ -261,9 +314,9 @@ void buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const str
 	bone->setBaseMatrix(bone->getTransformMatrix());
 	bone->setBoneMatrix(bone->getTransformMatrix());
 
-	for (int i = 0; i < bones.size(); i++) {
-		if (bones[i]->mName == name) {
-			bones[i]->mOffsetMatrix.Decompose(s, rq, t);
+	for (int i = 0; i < bones_.size(); i++) {
+		if (bones_[i]->mName == name) {
+			bones_[i]->mOffsetMatrix.Decompose(s, rq, t);
 			Polycode::Matrix4 m = Polycode::Quaternion(rq.w, rq.x, rq.y, rq.z).createMatrix();
 			m.setPosition(t.x, t.y, t.z);
 			bone->setRestMatrix(m);
@@ -271,40 +324,116 @@ void buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const str
 	}
 
 	for (int n = 0; n < nd->mNumChildren; ++n) {
-		buildSkeleton(skel, bone, sc, nd->mChildren[n]);
+		buildSkeleton(skel, bone, nd->mChildren[n]);
 	}
 	skel->addBone(bone, getBoneID(name));
 }
 
-Polycode::Entity* importCollada(std::string path) {
-	file_path = filesystem::path(path);
+void ModelLoader::loadBoneAssignmentsCache() {
+	std::ifstream fs((std::string)file_path_ + ".bac", std::ios_base::binary | std::ios_base::in);
+	if (!fs.is_open()) {
+		bone_assignments_cached_ = false;
+		return;
+	}
+	std::cout << "Cache file exists. Loading..." << std::endl;
+	int n_meshes;
+	if (!fs.read(reinterpret_cast<char*>(&n_meshes), sizeof(int))) {
+		return;	
+	}
+	bone_assignments_.reserve(n_meshes);
+	for (int i = 0; i < n_meshes; ++i) {
+		int n_vs;
+		if (!fs.read(reinterpret_cast<char*>(&n_vs), sizeof(int))) {
+			return;
+		}
+		std::vector<BoneAssignment> ass(n_vs);
+		for (int j = 0; j < n_vs; ++j) {
+			auto& as = ass[j];
+			for (auto& w : as.weights) {
+				if (!fs.read(reinterpret_cast<char*>(&w), sizeof(float))) {
+					return;
+				}
+			}
+			for (auto& id : as.boneIds) {
+				if (!fs.read(reinterpret_cast<char*>(&id), sizeof(unsigned int))) {
+					return;
+				}
+			}
+		}
+		bone_assignments_.push_back(ass);
+	}
+	has_weights_ = true;
+	bone_assignments_cached_ = true;
+}
+
+void ModelLoader::saveBoneAssignmentsCache() {
+	if (bone_assignments_cached_)
+		return;
+
+	std::cout << "Creating bone assignments cache file." << std::endl;
+	std::ofstream fs((std::string)file_path_ + ".bac", std::ios_base::binary | std::ios_base::out);
+	int size = bone_assignments_.size();
+	if (!fs.write(reinterpret_cast<char*>(&size), sizeof(int))) {
+		return;	
+	}
+	for (auto const& ass : bone_assignments_) {
+		int n_vs = ass.size();
+		if (!fs.write(reinterpret_cast<char*>(&n_vs), sizeof(int))) {
+			return;
+		}
+		for (auto const& as : ass) {
+			for (auto& w : as.weights) {
+				if (!fs.write(reinterpret_cast<const char*>(&w), sizeof(float))) {
+					return;
+				}
+			}
+			for (auto& id : as.boneIds) {
+				if (!fs.write(reinterpret_cast<const char*>(&id), sizeof(unsigned int))) {
+					return;
+				}
+			}
+		}
+	}
+}
+
+MeshGroup* ModelLoader::loadMesh() {
 	Assimp::Importer importer;
-	auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_ValidateDataStructure | aiProcess_FindInvalidData);
-	if (scene == nullptr) {
-		std::cerr << "Failed to load " << path << " by Assimp::Importer" << std::endl;
+	sc_ = importer.ReadFile(file_path_, aiProcess_Triangulate | aiProcess_ValidateDataStructure | aiProcess_FindInvalidData);
+	if (sc_ == nullptr) {
+		std::cerr << "Failed to load " << file_path_ << " by Assimp::Importer" << std::endl;
 		return nullptr;
 	}
 
-	MeshGroup *root = buildMesh(scene, scene->mRootNode);
+	loadBoneAssignmentsCache();
 
-	if (hasWeights) {
+	group_ = new MeshGroup();
+	buildMesh(sc_->mRootNode);
+
+	saveBoneAssignmentsCache();
+
+	if (has_weights_) {
 		auto *skeleton = new RandomAccessSkeleton();
 
-		for (int n = 0; n < scene->mRootNode->mNumChildren; ++n) {
-			if (scene->mRootNode->mChildren[n]->mNumChildren > 0) {
-				buildSkeleton(skeleton, NULL, scene, scene->mRootNode->mChildren[n]);
+		for (int n = 0; n < sc_->mRootNode->mNumChildren; ++n) {
+			if (sc_->mRootNode->mChildren[n]->mNumChildren > 0) {
+				buildSkeleton(skeleton, NULL, sc_->mRootNode->mChildren[n]);
 			}
 		}
 
-		if (scene->HasAnimations()) {
+		if (sc_->HasAnimations()) {
 			std::cerr << "Animation is not yet supported." << std::endl;
 		}
 
-		root->setSkeleton(skeleton);
+		group_->setSkeleton(skeleton);
 	}
 
-	root->Scale(0.3, 0.3, 0.3);
-	root->Translate(0, -3, 0);
+	group_->Scale(0.3, 0.3, 0.3);
+	group_->Translate(0, -3, 0);
 
-	return root;
+	return group_;
+}
+
+Polycode::Entity* importCollada(std::string path) {
+	ModelLoader loader(path);
+	return loader.loadMesh();
 }
