@@ -9,6 +9,7 @@ public:
 	void setSkeleton(Polycode::Skeleton* s) { skeleton_ = s; }
 	Polycode::Skeleton* getSkeleton() { return skeleton_; }
 	void applyBoneMotion();
+	std::vector<Polycode::SceneMesh*> getSceneMeshes();
 
 private:
 	Polycode::Skeleton* skeleton_;

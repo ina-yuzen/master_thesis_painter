@@ -111,6 +111,15 @@ void MeshGroup::applyBoneMotion() {
 	}
 }
 
+std::vector<Polycode::SceneMesh*> MeshGroup::getSceneMeshes() {
+	std::vector<Polycode::SceneMesh*> result;
+	result.resize(getNumChildren());
+	for (int i = 0, n = getNumChildren(); i < n; ++i) {
+		result[i] = static_cast<Polycode::SceneMesh*>(getChildAtIndex(i));
+	}
+	return result;
+}
+
 class ModelLoader {
 public:
 	ModelLoader(std::string path) : file_path_(path) {}
@@ -238,6 +247,10 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 							has_weights_ = true;
 						}
 					}
+				}	
+				for (; numAssignments < 4; ++numAssignments) {
+					ass.weights[numAssignments] = 0;
+					ass.boneIds[numAssignments] = 0;
 				}
 				bone_assignments_[mesh_index_].push_back(ass);
 			}

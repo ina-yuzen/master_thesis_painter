@@ -11,6 +11,7 @@
 namespace mobamas {
 
 struct Context;
+class MeshGroup;
 
 struct BoneHandle {
 	Polycode::Bone* bone;
@@ -20,7 +21,7 @@ struct BoneHandle {
 
 class BoneManipulation: public Polycode::EventHandler, public PinchEventListener {
 public:
-	BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model);
+	BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, Models model);
 	void handleEvent(Polycode::Event *e) override;
 	void Update();
 
@@ -33,7 +34,7 @@ private:
 	Polycode::Sound* pinch_start_sound_;
 	Polycode::Sound* pinch_end_sound_;
 	Polycode::Scene *scene_;
-	Polycode::SceneMesh *mesh_;
+	MeshGroup *mesh_;
 	std::vector<BoneHandle> handles_;
 	BoneHandle* current_target_;
 	Polycode::Vector2 xy_rotation_center_;

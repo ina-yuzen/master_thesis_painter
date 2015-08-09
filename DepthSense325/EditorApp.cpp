@@ -32,18 +32,15 @@ Polycode::SceneMesh* LoadMesh(Models model) {
 	return mesh;
 }
 
-Polycode::Entity* LoadMesh2(Models model) {
-	Polycode::Entity* mesh;
+MeshGroup* LoadMesh2(Models model) {
 	switch (model) {
 	case Models::MIKU:
-		mesh = importCollada("Resources/test2.DAE");
-		break;
+		return importCollada("Resources/test2.DAE");
 	default:
 		std::cout << "Unknown model" << std::endl;
 		assert(false);
-		break;
+		return nullptr;
 	}
-	return mesh;
 }
 
 
@@ -87,7 +84,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
-	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
+	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh2_, context->model));
 	painter_.reset(new ModelPainter(context, scene, mesh2_));
 	rotation_.reset(new ModelRotation(context, mesh2_));
 

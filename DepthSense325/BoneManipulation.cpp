@@ -7,29 +7,30 @@
 
 #include "Context.h"
 #include "EditorApp.h"
+#include "Import.h"
 #include "Util.h"
 
 namespace mobamas {
 
 const int kMovableBonesDepth = 5;	
-const std::map<Models, std::vector<std::string>> kManipulatableBones = ([] {
-	std::map<Models, std::vector<std::string>> map;
+const std::map<Models, std::vector<std::wstring>> kManipulatableBones = ([] {
+	std::map<Models, std::vector<std::wstring>> map;
 	{
-		std::vector<std::string> v;
-		v.push_back("Bone.001_R.001");
-		v.push_back("Bone.001_L.001");
-		v.push_back("Bone_L.002");
-		v.push_back("Bone_R.002");
+		std::vector<std::wstring> v;
+		v.push_back(L"Bone.001_R.001");
+		v.push_back(L"Bone.001_L.001");
+		v.push_back(L"Bone_L.002");
+		v.push_back(L"Bone_R.002");
 		map[Models::ROBOT] = v;
 	}
 	{
-		std::vector<std::string> v;
-		v.push_back("left_hair1");
-		v.push_back("right_hair1");
-		v.push_back("left_arm");
-		v.push_back("right_arm");
-		v.push_back("left_leg");
-		v.push_back("right_leg");
+		std::vector<std::wstring> v;
+		v.push_back(L"ç∂îØÇP");
+		v.push_back(L"âEîØÇP");
+		v.push_back(L"ç∂òr");
+		v.push_back(L"âEòr");
+		v.push_back(L"ç∂ë´");
+		v.push_back(L"âEë´");
 		map[Models::MIKU] = v;
 	}
 	return map;
@@ -43,7 +44,7 @@ Polycode::ScenePrimitive* CreateHandleMarker() {
 	return marker;
 }
 
-BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, Polycode::SceneMesh *mesh, Models model) :
+BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup* mesh, Models model) :
     context_(context),
 	EventHandler(),
 	scene_(scene),
@@ -56,8 +57,10 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
 	{
 		auto b = skeleton->getBone(bidx);
-		bone_id_map[b] = bidx;
-		b->disableAnimation = true;
+		if (b) {
+			bone_id_map[b] = bidx;
+			b->disableAnimation = true;
+		}
 	}
 	for (auto name: kManipulatableBones.at(model)) {
 		BoneHandle handle;
@@ -122,20 +125,22 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	}
 }
 
-std::vector<Polycode::Vector3> CalculateBoneCenters(Polycode::SceneMesh* mesh) {
-	auto skeleton = mesh->getSkeleton();
-	auto raw = mesh->getMesh();
-	std::vector<Polycode::Vector3> adjusted_points = ActualVertexPositions(mesh);
+std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
+	auto skeleton = group->getSkeleton();
 	std::vector<Polycode::Vector3> bone_centers(skeleton->getNumBones(), Polycode::Vector3(0, 0, 0));
 	std::vector<double> bone_weights(skeleton->getNumBones(), 0);
-	auto indices = raw->vertexBoneIndexArray;
-	auto weights = raw->vertexBoneWeightArray;
-	for (int vi = 0; vi < indices.getDataSize(); vi++) {
-		int bi = indices.data[vi];
-		double w = weights.data[vi];
-		if (w > 0.0) {
-			bone_centers[bi] = bone_centers[bi] + adjusted_points[vi / 4] * w;
-			bone_weights[bi] += w;
+	for (auto mesh : group->getSceneMeshes()) {
+		auto raw = mesh->getMesh();
+		std::vector<Polycode::Vector3> adjusted_points = ActualVertexPositions(mesh);
+		auto indices = raw->vertexBoneIndexArray;
+		auto weights = raw->vertexBoneWeightArray;
+		for (int vi = 0; vi < indices.getDataSize(); vi++) {
+			int bi = indices.data[vi];
+			double w = weights.data[vi];
+			if (w > 0.0) {
+				bone_centers[bi] = bone_centers[bi] + adjusted_points[vi / 4] * w;
+				bone_weights[bi] += w;
+			}
 		}
 	}
 	for (int i = 0; i < bone_centers.size(); i++) {
