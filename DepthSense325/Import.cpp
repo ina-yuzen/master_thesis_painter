@@ -1,4 +1,4 @@
-#include "EditorApp.h"
+#include "Import.h"
 
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -16,6 +16,28 @@ namespace filesystem = std::tr2::sys;
 namespace filesystem = boost::filesystem;
 #endif
 
+namespace mobamas {
+
+class EnhSceneMesh : public Polycode::SceneMesh {
+public:
+	EnhSceneMesh(int mesh_type) : SceneMesh(mesh_type), 
+		original_position_array_(Polycode::RenderDataArray::VERTEX_DATA_ARRAY),
+		original_normal_array_(Polycode::RenderDataArray::NORMAL_DATA_ARRAY) {}
+
+	void saveOriginal() {
+		original_position_array_ = mesh->vertexPositionArray;
+		original_normal_array_ = mesh->vertexNormalArray;
+	}
+
+	Polycode::VertexDataArray const& original_position_array() { return original_position_array_; }
+
+	Polycode::VertexDataArray const& original_normal_array() { return original_normal_array_; }
+
+private:
+	Polycode::VertexDataArray original_position_array_;
+	Polycode::VertexDataArray original_normal_array_;
+};
+
 class RandomAccessSkeleton : public Polycode::Skeleton {
 public:
 	void addBone(Polycode::Bone* bone, size_t id) {
@@ -24,16 +46,6 @@ public:
 		}
 		bones[id] = bone;
 	}
-};
-
-class MeshGroup : public Polycode::Entity {
-public:
-	using Polycode::Entity::Entity;
-	void setSkeleton(Polycode::Skeleton* s) { skeleton = s; }
-	Polycode::Skeleton* getSkeleton() { return skeleton; }
-
-private:
-	Polycode::Skeleton* skeleton;
 };
 
 struct BoneAssignment {
@@ -62,11 +74,48 @@ Polycode::Material* createMaterial(std::string name) {
 	return mat;
 }
 
+void MeshGroup::applyBoneMotion() {
+	for (auto child : children) {
+		auto mesh = static_cast<EnhSceneMesh*>(child);
+		auto raw = mesh->getMesh();
+		auto mesh_transform = child->getTransformMatrix();
+		auto parr = mesh->original_position_array();
+		auto narr = mesh->original_normal_array();
+		for (int vidx = 0; vidx < raw->vertexPositionArray.data.size() / 3; vidx++) {
+			Polycode::Vector3 rest_vert(parr.data[vidx * 3],
+				parr.data[vidx * 3 + 1],
+				parr.data[vidx * 3 + 2]);
+			Polycode::Vector3 nvec(narr.data[vidx * 3], 
+				narr.data[(vidx * 3) + 1], 
+				narr.data[(vidx * 3) + 2]);
+			Polycode::Vector3 real_pos, norm;
+			for (int b = 0; b < 4; b++)
+			{
+				auto bidx = vidx * 4 + b;
+				auto weight = raw->vertexBoneWeightArray.data[bidx];
+				if (weight > 0.0) {
+					auto bone = getSkeleton()->getBone(raw->vertexBoneIndexArray.data[bidx]);
+					real_pos += bone->finalMatrix * rest_vert * weight;
+					norm += bone->finalMatrix.rotateVector(nvec) * weight;
+				}
+			}
+			raw->vertexPositionArray.data[vidx * 3] = real_pos.x;
+			raw->vertexPositionArray.data[vidx * 3 + 1] = real_pos.y;
+			raw->vertexPositionArray.data[vidx * 3 + 2] = real_pos.z;
+
+			norm.Normalize();
+			raw->vertexNormalArray.data[vidx * 3] = norm.x;
+			raw->vertexNormalArray.data[vidx * 3 + 1] = norm.y;
+			raw->vertexNormalArray.data[vidx * 3 + 2] = norm.z;
+		}
+	}
+}
+
 class ModelLoader {
 public:
 	ModelLoader(std::string path) : file_path_(path) {}
 	MeshGroup* loadMesh();
-	
+
 private:
 	const filesystem::path file_path_;
 	const struct aiScene* sc_;
@@ -82,7 +131,7 @@ private:
 	unsigned int addBone(aiBone *bone);
 	unsigned int ModelLoader::getBoneID(aiString name);
 	void buildMesh(const struct aiNode* nd);
-	void buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd);
+	Polycode::Bone* buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd);
 	void loadBoneAssignmentsCache();
 	void saveBoneAssignmentsCache();
 };
@@ -94,7 +143,8 @@ unsigned int ModelLoader::addBone(aiBone *bone) {
 		int id = bones_.size() - 1;
 		bones_inverted_[bone] = id;
 		return id;
-	} else {
+	}
+	else {
 		return found->second;
 	}
 }
@@ -115,12 +165,12 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 
 	// draw all meshes assigned to this node
 	for (size_t n = 0; n < nd->mNumMeshes; ++n) {
-		Polycode::SceneMesh *sc__mesh = new Polycode::SceneMesh(Polycode::Mesh::TRI_MESH);
-		Polycode::Mesh *tmesh = sc__mesh->getMesh();
+		EnhSceneMesh *scene_mesh = new EnhSceneMesh(Polycode::Mesh::TRI_MESH);
+		Polycode::Mesh *tmesh = scene_mesh->getMesh();
 		tmesh->indexedMesh = true;
 
 		const aiMesh* mesh = sc_->mMeshes[nd->mMeshes[n]];
-		mesh_index_ ++;
+		mesh_index_++;
 
 		std::cout << "Importing mesh " << mesh_index_ << ":";
 #ifdef _WINDOWS
@@ -193,12 +243,13 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			}
 
 			tmesh->addBoneAssignments(
-				ass.weights[0], ass.boneIds[0], 
-				ass.weights[1], ass.boneIds[1], 
-				ass.weights[2], ass.boneIds[2], 
+				ass.weights[0], ass.boneIds[0],
+				ass.weights[1], ass.boneIds[1],
+				ass.weights[2], ass.boneIds[2],
 				ass.weights[3], ass.boneIds[3]);
 			tmesh->addVertex(mesh->mVertices[index].x, mesh->mVertices[index].y, mesh->mVertices[index].z);
 		}
+		scene_mesh->saveOriginal();
 
 		for (size_t t = 0; t < mesh->mNumFaces; ++t) {
 			const struct aiFace* face = &mesh->mFaces[t];
@@ -227,7 +278,7 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 		// TODO: set position, scale, rotation if required
 		fullTransform.Decompose(s, r, p);
 
-		sc__mesh->setLocalBoundingBox(tmesh->calculateBBox());
+		scene_mesh->setLocalBoundingBox(tmesh->calculateBBox());
 
 		auto ai_mat = sc_->mMaterials[mesh->mMaterialIndex];
 		int tex_index = 0;
@@ -244,7 +295,7 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			wchar_t* wstr = new wchar_t[wchars_num];
 			MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, wstr, wchars_num);
 			// do whatever with wstr
-			sc__mesh->loadTexture(wstr);
+			scene_mesh->loadTexture(wstr);
 			delete[] wstr;
 		}
 
@@ -254,8 +305,8 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			mat_name = std::string(str.C_Str());
 		}
 		auto poly_mat = createMaterial(mat_name);
-		sc__mesh->setMaterial(poly_mat);
-		Polycode::ShaderBinding *binding = sc__mesh->getLocalShaderOptions();
+		scene_mesh->setMaterial(poly_mat);
+		Polycode::ShaderBinding *binding = scene_mesh->getLocalShaderOptions();
 		aiColor4D color;
 		if (AI_SUCCESS == ai_mat->Get(AI_MATKEY_COLOR_DIFFUSE, color)) {
 			binding
@@ -283,7 +334,7 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			std::cerr << "Ignored " << nIgnoredPolygons << " non-triangular polygons" << std::endl;
 		}
 
-		group_->addChild(sc__mesh);
+		group_->addChild(scene_mesh);
 	}
 
 	// drill down to all children
@@ -292,9 +343,11 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 	}
 }
 
-void ModelLoader::buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd) {
+Polycode::Bone* ModelLoader::buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd) {
 	auto name = nd->mName;
-	auto *bone = new Polycode::Bone(name.C_Str());
+	WStr wname;
+	utf8toWStr(wname, name.C_Str());
+	auto *bone = new Polycode::Bone(wname);
 	bone->setParentBone(parent);
 
 	aiVector3D s;
@@ -324,9 +377,10 @@ void ModelLoader::buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *pare
 	}
 
 	for (int n = 0; n < nd->mNumChildren; ++n) {
-		buildSkeleton(skel, bone, nd->mChildren[n]);
+		bone->addChildBone(buildSkeleton(skel, bone, nd->mChildren[n]));
 	}
 	skel->addBone(bone, getBoneID(name));
+	return bone;
 }
 
 void ModelLoader::loadBoneAssignmentsCache() {
@@ -338,7 +392,7 @@ void ModelLoader::loadBoneAssignmentsCache() {
 	std::cout << "Cache file exists. Loading..." << std::endl;
 	int n_meshes;
 	if (!fs.read(reinterpret_cast<char*>(&n_meshes), sizeof(int))) {
-		return;	
+		return;
 	}
 	bone_assignments_.reserve(n_meshes);
 	for (int i = 0; i < n_meshes; ++i) {
@@ -374,7 +428,7 @@ void ModelLoader::saveBoneAssignmentsCache() {
 	std::ofstream fs((std::string)file_path_ + ".bac", std::ios_base::binary | std::ios_base::out);
 	int size = bone_assignments_.size();
 	if (!fs.write(reinterpret_cast<char*>(&size), sizeof(int))) {
-		return;	
+		return;
 	}
 	for (auto const& ass : bone_assignments_) {
 		int n_vs = ass.size();
@@ -433,7 +487,9 @@ MeshGroup* ModelLoader::loadMesh() {
 	return group_;
 }
 
-Polycode::Entity* importCollada(std::string path) {
+MeshGroup* importCollada(std::string path) {
 	ModelLoader loader(path);
 	return loader.loadMesh();
+}
+
 }
