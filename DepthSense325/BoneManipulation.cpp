@@ -252,6 +252,7 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	auto new_quot = parents_inv * mesh_rot.Inverse() * diff * mesh_rot * parents * current_target_->bone->getRotationQuat();
 	current_target_->bone->setRotationByQuaternion(new_quot);
 	pinch_prev_ = point_new;
+	mesh_->applyBoneMotion();
 }
 
 void BoneManipulation::OnPinchEnd() {

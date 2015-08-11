@@ -56,10 +56,8 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 
 	auto scene = new Polycode::Scene();
 
-	mesh_ = LoadMesh(context->model);
+	mesh_ = LoadMesh2(context->model);
 	scene->addEntity(mesh_);
-	mesh2_ = LoadMesh2(context->model);
-	scene->addEntity(mesh2_);
 	scene->useClearColor = false;
 
 	auto light = new SceneLight(SceneLight::POINT_LIGHT, scene, 100);
@@ -67,26 +65,14 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	scene->addLight(light);
 	scene->enableLighting(true);
 
-	auto skeleton = mesh_->getSkeleton();
-	Polycode::Bone* root = nullptr;
-	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
-	{
-		auto b = skeleton->getBone(bidx);
-		if (b->getParentBone() == nullptr) {
-			root = b;
-			break;
-		}
-	}
-	root->setPositionY(root->getPosition().y - 1); // adjust center to rotate
-
 	auto cam = 	scene->getActiveCamera();
 	cam->setPosition(0, 0, 20);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
-	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh2_, context->model));
-	painter_.reset(new ModelPainter(context, scene, mesh2_));
-	rotation_.reset(new ModelRotation(context, mesh2_));
+	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
+	painter_.reset(new ModelPainter(context, scene, mesh_));
+	rotation_.reset(new ModelRotation(context, mesh_));
 
 	context->pinch_listeners = bone_manipulation_;
 }

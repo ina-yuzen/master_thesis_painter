@@ -38,16 +38,6 @@ private:
 	Polycode::VertexDataArray original_normal_array_;
 };
 
-class RandomAccessSkeleton : public Polycode::Skeleton {
-public:
-	void addBone(Polycode::Bone* bone, size_t id) {
-		if (bones.size() <= id) {
-			bones.resize(id + 1);
-		}
-		bones[id] = bone;
-	}
-};
-
 struct BoneAssignment {
 	float weights[4];
 	unsigned int boneIds[4];
@@ -75,6 +65,7 @@ Polycode::Material* createMaterial(std::string name) {
 }
 
 void MeshGroup::applyBoneMotion() {
+	skeleton_->Update();
 	for (auto child : children) {
 		auto mesh = static_cast<EnhSceneMesh*>(child);
 		auto raw = mesh->getMesh();
@@ -129,44 +120,31 @@ private:
 	const filesystem::path file_path_;
 	const struct aiScene* sc_;
 	MeshGroup* group_;
-	bool has_weights_ = false;
-	std::vector<aiBone*> bones_;
-	std::unordered_map<aiBone*, unsigned int> bones_inverted_;
-	unsigned int num_bones_ = 0;
 	BoneAssignments bone_assignments_;
 	bool bone_assignments_cached_;
 	int mesh_index_ = -1;
+	std::unordered_map<const char*, unsigned int> bone_id_cache_;
 
-	unsigned int addBone(aiBone *bone);
-	unsigned int ModelLoader::getBoneID(aiString name);
+	unsigned int ModelLoader::getBoneID(aiString const& name);
 	void buildMesh(const struct aiNode* nd);
-	Polycode::Bone* buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd);
+	Polycode::Bone* buildSkeleton(Polycode::Bone *parent, const struct aiNode* nd);
 	void loadBoneAssignmentsCache();
 	void saveBoneAssignmentsCache();
 };
 
-unsigned int ModelLoader::addBone(aiBone *bone) {
-	auto found = bones_inverted_.find(bone);
-	if (found == bones_inverted_.end()) {
-		bones_.push_back(bone);
-		int id = bones_.size() - 1;
-		bones_inverted_[bone] = id;
+unsigned int ModelLoader::getBoneID(aiString const& name) {
+	auto cname = name.C_Str();
+	auto found = bone_id_cache_.find(cname);
+	if (found == bone_id_cache_.end()) {
+		auto skel = group_->getSkeleton();
+		auto b = skel->getBoneByName(cname);
+		assert(b != nullptr);
+		auto id = skel->getBoneIndexByBone(b);
+		bone_id_cache_[cname] = id;
 		return id;
-	}
-	else {
+	} else {
 		return found->second;
 	}
-}
-
-unsigned int ModelLoader::getBoneID(aiString name) {
-	for (unsigned int i = 0; i < bones_.size(); i++) {
-		if (bones_[i]->mName == name) {
-			return i;
-		}
-	}
-	auto dummy = new aiBone();
-	dummy->mName = name;
-	return addBone(dummy);
 }
 
 void ModelLoader::buildMesh(const struct aiNode* nd) {
@@ -181,14 +159,12 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 		const aiMesh* mesh = sc_->mMeshes[nd->mMeshes[n]];
 		mesh_index_++;
 
-		std::cout << "Importing mesh " << mesh_index_ << ":";
+		std::cout << "Importing mesh " << mesh_index_ << ": ";
+		std::cout.flush();
 #ifdef _WINDOWS
-		const char* ptr = mesh->mName.C_Str();
-		int wchars_num = MultiByteToWideChar(CP_UTF8, 0, ptr, -1, NULL, 0);
-		wchar_t* wstr = new wchar_t[wchars_num];
-		MultiByteToWideChar(CP_UTF8, 0, ptr, -1, wstr, wchars_num);
-		std::wcout << wstr;
-		delete[] wstr;
+		WStr w;
+		utf8toWStr(w, mesh->mName.C_Str());
+		std::wcout << w;
 		std::wcout.flush();
 #else
 		std::cout << std::string(mesh->mName.C_Str());
@@ -237,14 +213,13 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 				// VERRRRRRRRRY heavy, file cache is required for production use
 				for (unsigned int a = 0; a < mesh->mNumBones; a++) {
 					aiBone* bone = mesh->mBones[a];
-					unsigned int boneIndex = addBone(bone);
+					unsigned int boneIndex = getBoneID(bone->mName);
 
 					for (unsigned int b = 0; b < bone->mNumWeights && numAssignments < 4; b++) {
 						if (bone->mWeights[b].mVertexId == index) {
 							ass.weights[numAssignments] = bone->mWeights[b].mWeight;
 							ass.boneIds[numAssignments] = boneIndex;
 							numAssignments++;
-							has_weights_ = true;
 						}
 					}
 				}	
@@ -347,6 +322,7 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			std::cerr << "Ignored " << nIgnoredPolygons << " non-triangular polygons" << std::endl;
 		}
 
+		// FIXME: 親子関係を崩してしまっているのでモデルによっては相対になってる行列が壊れるかも
 		group_->addChild(scene_mesh);
 	}
 
@@ -356,12 +332,11 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 	}
 }
 
-Polycode::Bone* ModelLoader::buildSkeleton(RandomAccessSkeleton *skel, Polycode::Bone *parent, const struct aiNode* nd) {
+Polycode::Bone* ModelLoader::buildSkeleton(Polycode::Bone *parent, const struct aiNode* nd) {
 	auto name = nd->mName;
-	WStr wname;
-	utf8toWStr(wname, name.C_Str());
-	auto *bone = new Polycode::Bone(wname);
+	auto *bone = new Polycode::Bone(name.C_Str());
 	bone->setParentBone(parent);
+	bone->parentBoneId = group_->getSkeleton()->getBoneIndexByBone(parent);
 
 	aiVector3D s;
 	aiQuaternion rq;
@@ -380,19 +355,33 @@ Polycode::Bone* ModelLoader::buildSkeleton(RandomAccessSkeleton *skel, Polycode:
 	bone->setBaseMatrix(bone->getTransformMatrix());
 	bone->setBoneMatrix(bone->getTransformMatrix());
 
-	for (int i = 0; i < bones_.size(); i++) {
-		if (bones_[i]->mName == name) {
-			bones_[i]->mOffsetMatrix.Decompose(s, rq, t);
-			Polycode::Matrix4 m = Polycode::Quaternion(rq.w, rq.x, rq.y, rq.z).createMatrix();
-			m.setPosition(t.x, t.y, t.z);
-			bone->setRestMatrix(m);
+	aiBone* found_bone = nullptr;
+	for (unsigned int i = 0; i < sc_->mNumMeshes; i++) {
+		auto mesh = sc_->mMeshes[i];
+		for (unsigned int i = 0; i < mesh->mNumBones; i++) {
+			auto ref = mesh->mBones[i];
+			if (name == ref->mName) {
+				if (found_bone) {
+					WStr dst;
+					utf8toWStr(dst, name.C_Str());
+					std::wcerr << "Two references to the same bone " << dst << ". offsetMatrix conflicts." << std::endl;
+				} else {
+					found_bone = ref;
+				}
+			}
 		}
 	}
-
-	for (int n = 0; n < nd->mNumChildren; ++n) {
-		bone->addChildBone(buildSkeleton(skel, bone, nd->mChildren[n]));
+	if (found_bone) {
+		found_bone->mOffsetMatrix.Decompose(s, rq, t);
+		Polycode::Matrix4 m = Polycode::Quaternion(rq.w, rq.x, rq.y, rq.z).createMatrix();
+		m.setPosition(t.x, t.y, t.z);
+		bone->setRestMatrix(m);
 	}
-	skel->addBone(bone, getBoneID(name));
+
+	group_->getSkeleton()->addBone(bone);
+	for (int n = 0; n < nd->mNumChildren; ++n) {
+		bone->addChildBone(buildSkeleton(bone, nd->mChildren[n]));
+	}
 	return bone;
 }
 
@@ -429,7 +418,6 @@ void ModelLoader::loadBoneAssignmentsCache() {
 		}
 		bone_assignments_.push_back(ass);
 	}
-	has_weights_ = true;
 	bone_assignments_cached_ = true;
 }
 
@@ -471,31 +459,24 @@ MeshGroup* ModelLoader::loadMesh() {
 		return nullptr;
 	}
 
-	loadBoneAssignmentsCache();
-
 	group_ = new MeshGroup();
+	group_->setSkeleton(new Polycode::Skeleton());
+
+	// skeleton must be built first to construct bone id list
+	buildSkeleton(NULL, sc_->mRootNode);
+	loadBoneAssignmentsCache();
 	buildMesh(sc_->mRootNode);
+	// saveBoneAssignmentsCache();
 
-	saveBoneAssignmentsCache();
-
-	if (has_weights_) {
-		auto *skeleton = new RandomAccessSkeleton();
-
-		for (int n = 0; n < sc_->mRootNode->mNumChildren; ++n) {
-			if (sc_->mRootNode->mChildren[n]->mNumChildren > 0) {
-				buildSkeleton(skeleton, NULL, sc_->mRootNode->mChildren[n]);
-			}
-		}
-
-		if (sc_->HasAnimations()) {
-			std::cerr << "Animation is not yet supported." << std::endl;
-		}
-
-		group_->setSkeleton(skeleton);
+	if (sc_->HasAnimations()) {
+		std::cerr << "Animation is not yet supported." << std::endl;
 	}
 
 	group_->Scale(0.3, 0.3, 0.3);
 	group_->Translate(0, -3, 0);
+
+	// init position
+	group_->applyBoneMotion();
 
 	return group_;
 }
