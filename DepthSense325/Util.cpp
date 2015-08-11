@@ -10,7 +10,7 @@ namespace mobamas {
 		std::vector<Polycode::Vector3> result;
 		auto raw = mesh->getMesh();
 		result.reserve(raw->getVertexCount());
-		auto mesh_transform = mesh->getTransformMatrix();
+		auto mesh_transform = mesh->getConcatenatedMatrix();
 		Polycode::Skeleton *skeleton;
 		if ((skeleton = mesh->getSkeleton())) {
 			for (int vidx = 0; vidx < raw->vertexPositionArray.data.size() / 3; vidx++) {
