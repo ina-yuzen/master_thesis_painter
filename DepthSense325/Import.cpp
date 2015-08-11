@@ -466,7 +466,7 @@ MeshGroup* ModelLoader::loadMesh() {
 	buildSkeleton(NULL, sc_->mRootNode);
 	loadBoneAssignmentsCache();
 	buildMesh(sc_->mRootNode);
-	// saveBoneAssignmentsCache();
+	saveBoneAssignmentsCache();
 
 	if (sc_->HasAnimations()) {
 		std::cerr << "Animation is not yet supported." << std::endl;

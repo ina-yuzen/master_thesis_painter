@@ -10,6 +10,7 @@ namespace mobamas {
 
 const int kDistance = sqrt(27.0);
 const double kSensitivity = 1;
+const double kWheelScaleStep = 0.1;
 
 ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh): 
 	context_(context),
@@ -19,14 +20,17 @@ ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::Entity 
 {
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
-#ifdef NO_TOUCH_SUPPORT
-	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
-#else
-	input->addEventListener(this, InputEvent::EVENT_TOUCHES_BEGAN);
-	input->addEventListener(this, InputEvent::EVENT_TOUCHES_MOVED);
-#endif
+
+	if (context->operation_mode == OperationMode::MouseMode) {
+		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEWHEEL_DOWN);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEWHEEL_UP);
+	} else {
+		input->addEventListener(this, InputEvent::EVENT_TOUCHES_BEGAN);
+		input->addEventListener(this, InputEvent::EVENT_TOUCHES_MOVED);
+	}
 }
 
 void ModelRotation::handleEvent(Polycode::Event *e) {
@@ -100,6 +104,12 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEMOVE:
 		if (moving_)
 			rotate_by_diff(((InputEvent*)e)->getMousePosition());
+		break;
+	case InputEvent::EVENT_MOUSEWHEEL_UP:
+		mesh_->setScale(mesh_->getScale() + Polycode::Vector3(kWheelScaleStep, kWheelScaleStep, kWheelScaleStep));
+		break;
+	case InputEvent::EVENT_MOUSEWHEEL_DOWN:
+		mesh_->setScale(mesh_->getScale() - Polycode::Vector3(kWheelScaleStep, kWheelScaleStep, kWheelScaleStep));
 		break;
 	}
 }

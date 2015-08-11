@@ -69,7 +69,9 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	cam->setPosition(0, 0, 20);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
-	hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
+	if (context->operation_mode == OperationMode::MidAirMode) {
+		hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
+	}
 	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
 	painter_.reset(new ModelPainter(context, scene, mesh_));
 	rotation_.reset(new ModelRotation(context, mesh_));
@@ -86,7 +88,8 @@ EditorApp::~EditorApp() {
 
 bool EditorApp::Update() {
 	bone_manipulation_->Update();
-	hand_visualization_->Update();
+	if (hand_visualization_)
+		hand_visualization_->Update();
 	return core_->updateAndRender();
 }
 

@@ -77,13 +77,13 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 		scene->addEntity(handle.marker);
 	}
 
-	auto input = Polycode::CoreServices::getInstance()->getInput();
-	using Polycode::InputEvent;
-#ifdef _DEBUG
-	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
-#endif
+	if (context->operation_mode == OperationMode::MouseMode) {
+		auto input = Polycode::CoreServices::getInstance()->getInput();
+		using Polycode::InputEvent;
+		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+	}
 	pinch_start_sound_ = new Polycode::Sound("Resources/click7.wav");
 	pinch_end_sound_ = new Polycode::Sound("Resources/click21.wav");
 }
@@ -125,6 +125,7 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	}
 }
 
+// TODO: optimize this and ActualVertexPositions
 std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
 	auto skeleton = group->getSkeleton();
 	std::vector<Polycode::Vector3> bone_centers(skeleton->getNumBones(), Polycode::Vector3(0, 0, 0));

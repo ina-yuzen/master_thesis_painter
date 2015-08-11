@@ -11,8 +11,15 @@ class Recorder;
 class RSClient;
 class PinchEventListener;
 
+enum OperationMode {
+	MouseMode,
+	TouchMode,
+	MidAirMode,
+};
+
 struct Context {
 	Models model;
+	OperationMode operation_mode;
 	std::fstream logfs;
 	std::unique_ptr<Recorder> recorder;
 	std::shared_ptr<RSClient> rs_client;

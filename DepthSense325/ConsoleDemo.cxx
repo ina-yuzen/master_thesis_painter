@@ -39,6 +39,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	auto context = std::make_shared<mobamas::Context>();
 	auto client = std::make_shared<mobamas::RSClient>(context);
 	context->model = model;
+	context->operation_mode = mobamas::OperationMode::MouseMode;
 	context->rs_client = client;
 	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
 
@@ -52,19 +53,21 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	DWORD threadId;
 	HANDLE hThread = NULL;
-	if (client->Prepare()) {
-		hThread = CreateThread(NULL, 0, RunRealSense, context.get(), 0, &threadId);
-		if (hThread == NULL) {
-			OutputDebugString(L"Failed to start depth sense thread");
-			LPTSTR text = NULL;
-			FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, GetLastError(), 0, text, MAX_PATH, 0);
-			OutputDebugString(text);
-			LocalFree(text);
-			return 3;
+	if (context->operation_mode == mobamas::OperationMode::MidAirMode) {
+		if (client->Prepare()) {
+			hThread = CreateThread(NULL, 0, RunRealSense, context.get(), 0, &threadId);
+			if (hThread == NULL) {
+				OutputDebugString(L"Failed to start depth sense thread");
+				LPTSTR text = NULL;
+				FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, GetLastError(), 0, text, MAX_PATH, 0);
+				OutputDebugString(text);
+				LocalFree(text);
+				return 3;
+			}
 		}
-	}
-	else {
-		MessageBox(NULL, L"Failed to prepare RealSense", L"Insufficient", MB_ICONWARNING | MB_OK);
+		else {
+			MessageBox(NULL, L"Failed to prepare RealSense", L"Insufficient", MB_ICONWARNING | MB_OK);
+		}
 	}
 
 	MSG Msg;
