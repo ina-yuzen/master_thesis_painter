@@ -57,7 +57,7 @@ PenPicker::PenPicker(std::shared_ptr<Context> context):
 
 	for (size_t i = 0; i < kMaxSizeStep; i++)
 	{
-		auto displaySize = (i + 1) * 5;
+		auto displaySize = DisplaySize(i);
 		auto plane = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, displaySize, displaySize, displaySize);
 		plane->setPosition(kWinWidth - kSize - 20, kSize * i + 20);
 		plane->setColor(1, 1, 1, 1);
@@ -98,7 +98,7 @@ void PenPicker::UpdateCursorStyle() {
 		cursor_->setColor(1, 1, 1, 1);
 	}
 	else {
-		auto size = (current_size() + 1) * 5;
+		auto size = DisplaySize(current_size());
 		cursor_->setColor(current_color());
 		cursor_->setPrimitiveOptions(Polycode::ScenePrimitive::TYPE_CIRCLE, size, size, size);
 		cursor_->setTexture(nullptr);

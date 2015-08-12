@@ -35,7 +35,7 @@ Polycode::SceneMesh* LoadMesh(Models model) {
 MeshGroup* LoadMesh2(Models model) {
 	switch (model) {
 	case Models::MIKU:
-		return importCollada("Resources/test2.DAE");
+		return importCollada("Resources/box.dae");
 	default:
 		std::cout << "Unknown model" << std::endl;
 		assert(false);
@@ -57,6 +57,10 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	auto scene = new Polycode::Scene();
 
 	mesh_ = LoadMesh2(context->model);
+	if (!mesh_) {
+		throw std::runtime_error("Could not load mesh");
+	}
+	mesh_->setScale(0.03, 0.03, 0.03);
 	scene->addEntity(mesh_);
 	scene->useClearColor = false;
 
@@ -72,11 +76,11 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	if (context->operation_mode == OperationMode::MidAirMode) {
 		hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
 	}
-	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
+	// bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
 	painter_.reset(new ModelPainter(context, scene, mesh_));
 	rotation_.reset(new ModelRotation(context, mesh_));
 
-	context->pinch_listeners = bone_manipulation_;
+	// context->pinch_listeners = bone_manipulation_;
 }
 
 EditorApp::~EditorApp() {
@@ -87,7 +91,7 @@ EditorApp::~EditorApp() {
 }
 
 bool EditorApp::Update() {
-	bone_manipulation_->Update();
+	// bone_manipulation_->Update();
 	if (hand_visualization_)
 		hand_visualization_->Update();
 	return core_->updateAndRender();

@@ -19,6 +19,10 @@ public:
 	int current_size() { return current_size_; }
 	Polycode::Texture* current_stamp() { return current_stamp_; }
 
+	static int DisplaySize(int size) {
+		return (size + 1) * 5;
+	}
+
 private:
 	static const std::vector<Polycode::Color> kPalette;
 	std::shared_ptr<Context> context_;

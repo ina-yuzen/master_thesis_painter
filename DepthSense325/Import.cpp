@@ -64,7 +64,9 @@ Polycode::Material* createMaterial(std::string name) {
 	return mat;
 }
 
+// FIXME: misbehave against models without bone weights
 void MeshGroup::applyBoneMotion() {
+	return;
 	skeleton_->Update();
 	for (auto child : children) {
 		auto mesh = static_cast<EnhSceneMesh*>(child);
@@ -472,8 +474,8 @@ MeshGroup* ModelLoader::loadMesh() {
 		std::cerr << "Animation is not yet supported." << std::endl;
 	}
 
-	group_->Scale(0.3, 0.3, 0.3);
-	group_->Translate(0, -3, 0);
+	//group_->Scale(0.3, 0.3, 0.3);
+	//group_->Translate(0, -3, 0);
 
 	// init position
 	group_->applyBoneMotion();

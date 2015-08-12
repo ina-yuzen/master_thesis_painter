@@ -1,20 +1,28 @@
 #include "ModelPainter.h"
 
 #include <ctime>
+#include <unordered_set>
 #include <opencv2\opencv.hpp>
 
 #include "Context.h"
+#include "EditorApp.h"
+#include "Import.h"
 #include "PenPicker.h"
 #include "Util.h"
 
 namespace mobamas {
 
-	ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, Polycode::Entity *mesh) :
+const int kMouseLeftButtonCode = 0;
+const float kDisplayCanvasRatio = 1; // set < 1 to reduce canvas size
+const int kStampSize = 32; // on display
+
+	ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh) :
 		context_(context),
 		EventHandler(),
 		scene_(scene),
 		mesh_(mesh),
-		prev_tc_(),
+		prev_mouse_pos_(),
+		canvas_(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4),
 		left_clicking_(false)
 	{
 		picker_.reset(new PenPicker(context));
@@ -30,7 +38,6 @@ namespace mobamas {
 	struct Intersection {
 		bool found;
 		int first_vertex_index;
-		double s, t; // intersection point is s(v1-v0) + t(v2-v0)
 		Polycode::Vector3 point;
 	};
 
@@ -73,8 +80,6 @@ namespace mobamas {
 			return res;
 		res.found = true;
 		res.point = intersection;
-		res.s = s;
-		res.t = t;
 		return res;
 	}
 
@@ -110,101 +115,199 @@ namespace mobamas {
 		return start.first * (1 - ratio) + end.first * ratio;
 	}
 
-	const int kStampSize = 32;
-	static Polycode::Vector2 PaintTexture(Polycode::SceneMesh *mesh, Polycode::Vector2* prev_tc, const Intersection& intersection, const std::unique_ptr<PenPicker>& picker) {
-		auto raw = mesh->getMesh();
-		auto idx0 = intersection.first_vertex_index;
-		auto tc0 = raw->getVertexTexCoordAtIndex(idx0);
-		auto tc1 = raw->getVertexTexCoordAtIndex(idx0 + 1);
-		auto tc2 = raw->getVertexTexCoordAtIndex(idx0 + 2);
-		auto v0 = raw->getVertexPositionAtIndex(idx0);
-		auto v1 = raw->getVertexPositionAtIndex(idx0 + 1);
-		auto v2 = raw->getVertexPositionAtIndex(idx0 + 2);
-		auto tc = (tc1 - tc0) * intersection.s + (tc2 - tc0) * intersection.t + tc0;
-
-		auto texture = mesh->getTexture();
-		auto height = texture->getHeight(), width = texture->getWidth();
-		auto buffer = texture->getTextureData();
-		cv::Mat tex_mat(height, width, CV_8UC4, buffer);
-
-		auto TexPoint = [width, height](Polycode::Vector2 tc) {
-			return cv::Point(static_cast<int>(tc.x * width), static_cast<int>(tc.y * height));
-		};
-
-		switch (picker->current_brush()) {
-		case Brush::PEN:
-			if (prev_tc == nullptr)
-				return tc;
-			{
-				auto carea = (tc1 - tc0).crossProduct(tc2 - tc0);
-				auto varea = (v1 - v0).crossProduct(v2 - v0).length();
-				int normalized_pen_size = std::max(round(500 * picker->current_size() * carea / varea), 1.0);
-
-				unsigned int rgba = picker->current_color().getUint();
-				auto start = TexPoint(*prev_tc);
-				auto end = TexPoint(tc);
-				if (sqrt((end - start).dot(end - start)) < normalized_pen_size * 5) {
-					cv::line(tex_mat, start, end, cv::Scalar(rgba & 0xff, (rgba >> 8) & 0xff, (rgba >> 16) & 0xff, 0xff), normalized_pen_size);
-				}
-			}
-			break;
-		case Brush::STAMP:
-			if (prev_tc == nullptr || cv::norm(TexPoint(tc) - TexPoint(*prev_tc)) > kStampSize) {
-				auto center = cv::Point(static_cast<int>(tc.x * width), static_cast<int>(tc.y * height));
-				auto left_top = center - cv::Point(kStampSize / 2, kStampSize / 2);
-				cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4, picker->current_stamp()->getTextureData());
-				cv::Rect dest_rect(
-					std::max(left_top.x, 0),
-					std::max(left_top.y, 0),
-					std::min({ kStampSize, kStampSize + left_top.x, width - left_top.x }),
-					std::min({ kStampSize, kStampSize + left_top.y, height - left_top.y }));
-				cv::Mat dest_roi(tex_mat, dest_rect);
-				cv::Mat src_roi(stamp_mat, cv::Rect(
-					std::max(-left_top.x, 0),
-					std::max(-left_top.y, 0),
-					dest_rect.width,
-					dest_rect.height));
-				std::vector<cv::Mat> channels;
-				cv::split(src_roi, channels);
-				src_roi.copyTo(dest_roi, channels[3]);
-			}
-			else {
-				return *prev_tc;
-			}
-			break;
+void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
+	canvas_ = cv::Scalar(0, 0, 0, 0);
+	switch (picker_->current_brush()) {
+	case Brush::PEN:
+	{
+		int cv_pen_size = PenPicker::DisplaySize(picker_->current_size()) * kDisplayCanvasRatio;
+		if (prev_mouse_pos_) {
+			cv::line(canvas_, ToCv(*prev_mouse_pos_, kDisplayCanvasRatio), ToCv(mouse_pos, kDisplayCanvasRatio),
+				ToCv(picker_->current_color()), cv_pen_size);
 		}
-#ifdef _DEBUG
-		cv::imshow("win", tex_mat);
-#endif
-		texture->recreateFromImageData();
-		return tc;
-	}
-
-	const int kMouseLeftButtonCode = 0;
-
-	void ModelPainter::paintSceneMesh(Polycode::Entity* mesh_, Polycode::Ray ray){
-		int num_of_children = mesh_->getNumChildren();
-		if (num_of_children == 0){
-			auto scene_mesh = (Polycode::SceneMesh*) mesh_;
-			auto raw = scene_mesh->getMesh();
-			assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
-			auto intersection = FindIntersectionPolygon(scene_mesh, ray);
-			if (intersection.found) {
-				prev_tc_.reset(new Polycode::Vector2(PaintTexture(scene_mesh, prev_tc_.get(), intersection, picker_)));
-			}
-			return;
-		}
-		for (int i = 0; i < num_of_children; i++){
-			paintSceneMesh(mesh_->getChildAtIndex(i), ray);
+		else {
+			cv::circle(canvas_, ToCv(mouse_pos, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
 		}
 	}
+		break;
+	case Brush::STAMP:
+		if (prev_mouse_pos_ == nullptr || mouse_pos.distance(*prev_mouse_pos_) > kStampSize) {
+			auto left_top = ToCv(mouse_pos) - cv::Point(kStampSize / 2, kStampSize / 2);
+			cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4, picker_->current_stamp()->getTextureData());
+			cv::Rect dest_rect(
+				kDisplayCanvasRatio * std::max(left_top.x, 0),
+				kDisplayCanvasRatio * std::max(left_top.y, 0),
+				kDisplayCanvasRatio * std::min({ kStampSize, kStampSize + left_top.x, kWinWidth - left_top.x }),
+				kDisplayCanvasRatio * std::min({ kStampSize, kStampSize + left_top.y, kWinHeight - left_top.y }));
+			cv::Mat dest_roi(canvas_, dest_rect);
+			if (kDisplayCanvasRatio != 1) {
+				cv::Mat resized(kStampSize * kDisplayCanvasRatio, kStampSize * kDisplayCanvasRatio, CV_8UC4);
+				cv::resize(stamp_mat, resized, resized.size());
+				stamp_mat = resized;
+			}
+			cv::Mat src_roi(stamp_mat, cv::Rect(
+				kDisplayCanvasRatio * std::max(-left_top.x, 0),
+				kDisplayCanvasRatio * std::max(-left_top.y, 0),
+				dest_rect.width,
+				dest_rect.height));
+			std::vector<cv::Mat> channels;
+			cv::split(src_roi, channels);
+			src_roi.copyTo(dest_roi, channels[3]);
+		}
+		break;
+	}
+}
+
+static inline bool HasNonZero(cv::Mat const& mat) {
+	auto tc = mat.channels();
+	for (int y = 0; y < mat.rows; ++y) {
+		const uchar* ptr = mat.ptr<uchar>(y);
+		for (int x = 0; x < mat.cols; ++x) {
+			bool non_zero = false;
+			for (int c = 0; c < tc; ++c) {
+				non_zero = non_zero || ptr[x * tc + c] != 0;
+			}
+			if (non_zero)
+				return true;
+		}
+	}
+	return false;
+}
+
+static void overlay(cv::Mat& texture, cv::Mat const& new_paint) {
+	assert(texture.size() == new_paint.size());
+	assert(new_paint.channels() == 4);
+	auto tc = texture.channels();
+	for (int y = 0; y < texture.rows; ++y) {
+		uchar* tp = texture.ptr<uchar>(y);
+		const uchar* np = new_paint.ptr<uchar>(y);
+		for (int x = 0; x < texture.cols; ++x) {
+			double opacity = ((double)np[x * 4 + 3]) / 255.;
+			if (opacity < 0.000001)
+				continue;
+			for (int c = 0; c < 3; ++c) {
+				tp[x * tc + c] = tp[x * tc + c] * (1. - opacity) + np[x * 4 + c] * opacity;
+			}
+		}
+	}
+}
+
+void ModelPainter::PaintTexture(Polycode::SceneMesh *mesh, Intersection const& intersection) {
+	auto raw = mesh->getMesh();
+	auto texture = mesh->getTexture();
+	auto height = texture->getHeight(), width = texture->getWidth();
+	auto buffer = texture->getTextureData();
+	cv::Mat tex_mat(height, width, CV_8UC4, buffer);
+	cv::Mat new_paint(height, width, CV_8UC4);
+
+	auto vertex_positions = ActualVertexPositions(mesh);
+	auto renderer = Polycode::CoreServices::getInstance()->getRenderer();
+	renderer->BeginRender();
+	renderer->setPerspectiveDefaults();
+	scene_->getActiveCamera()->doCameraTransform();
+	auto camera = renderer->getCameraMatrix();
+	auto projection = renderer->getProjectionMatrix();
+	auto view = renderer->getViewport();
+
+	std::unordered_set<unsigned int> visited;
+	std::deque<unsigned int> waiting;
+	auto add_index = [&visited, &waiting](unsigned int idx) {
+		if (visited.find(idx) == visited.end())
+			waiting.push_front(idx);
+	};
+
+	waiting.push_front(intersection.first_vertex_index);
+
+	while (!waiting.empty()) {
+		auto idx = waiting.front();
+		waiting.pop_front();
+		visited.insert(idx);
+
+		cv::Point2f screen[3];
+		float left, top, right, bottom;
+		for (size_t i = 0; i < 3; i++) {
+			screen[i] = ToCv(renderer->Project(camera, projection, view, vertex_positions[i]));
+			if (i == 0) {
+				left = right = screen[i].x;
+				top = bottom = screen[i].y;
+			} else {
+				if (screen[i].x < left)
+					left = screen[i].x;
+				if (screen[i].x > right)
+					right = screen[i].x;
+				if (screen[i].y < top)
+					top = screen[i].y;
+				if (screen[i].y > bottom)
+					bottom = screen[i].y;
+			}
+		}
+		cv::Mat mask(std::ceil(bottom - top), std::ceil(right - left), CV_8UC1, cv::Scalar(0));
+		cv::Point pts[3];
+		for (size_t i = 0; i < 3; i++) {
+			pts[i] = cv::Point(screen[i].x - left, screen[i].y - top);
+		}
+		const cv::Point *arr[1] = { pts };
+		int npts[] = { 3 };
+		cv::fillPoly(mask, arr, npts, 1, cv::Scalar(255));
+		cv::Rect mask_on_canvas(left, top, mask.cols, mask.rows);
+		cv::Rect inter = mask_on_canvas & cv::Rect(cv::Point(0, 0), canvas_.size());
+		cv::Mat mask_roi = mask(inter + cv::Point(std::max(static_cast<int>(std::floor(-left)), 0), std::max(static_cast<int>(std::floor(-top)), 0)));
+		cv::Mat overlap;
+		canvas_(inter).copyTo(overlap, mask_roi);
+		if (!HasNonZero(overlap))
+			continue;
+
+		cv::Point2f tex[3]; 
+		for (size_t i = 0; i < 3; i++) {
+			auto uv = raw->getVertexTexCoordAtIndex(idx);
+			tex[i] = cv::Point2f(uv.x * width, uv.y * height);
+		}
+		auto trans = cv::getAffineTransform(screen, tex);
+		cv::warpAffine(overlap, new_paint, trans, new_paint.size());
+		overlay(tex_mat, new_paint);
+
+		// optimize: start searcing from current index, and stop if 3 hits found
+		auto ia = raw->indexArray.data;
+		auto v1 = ia[idx], v2 = ia[idx + 1], v3 = ia[idx + 2];
+		for (size_t i = 0, size = raw->indexArray.getDataSize() / 3; i < size; i += 3) {
+			auto t1 = ia[i], t2 = ia[i + 1], t3 = ia[i + 2];
+			if (v1 == t3 && v2 == t2 || v1 == t2 && v2 == t3 
+				|| v1 == t3 && v3 == t2 || v1 == t2 && v3 == t3
+				|| v3 == t3 && v2 == t2 || v3 == t2 && v2 == t3) {
+				add_index(t1);
+			}
+			if (v1 == t1 && v2 == t3 || v1 == t3 && v2 == t1 
+				|| v1 == t1 && v3 == t3 || v1 == t3 && v3 == t1
+				|| v3 == t1 && v2 == t3 || v3 == t3 && v2 == t1) {
+				add_index(t2);
+			}
+			if (v1 == t1 && v2 == t2 || v1 == t2 && v2 == t1 
+				|| v1 == t1 && v3 == t2 || v1 == t2 && v3 == t1
+				|| v3 == t1 && v2 == t2 || v3 == t2 && v2 == t1) {
+				add_index(t3);
+			}
+		}
+	}
+}
 
 void ModelPainter::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
 	auto paint = [&]() {
 		InputEvent *ie = (InputEvent*)e;
-		auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), ie->getMousePosition());
-		paintSceneMesh(mesh_, ray);
+		auto mouse_pos = ie->getMousePosition();
+		PrepareCanvas(mouse_pos);
+		cv::imshow("win", canvas_);
+
+		auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), mouse_pos);
+		for (auto scene_mesh : mesh_->getSceneMeshes()) {
+			auto raw = scene_mesh->getMesh();
+			assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
+			auto intersection = FindIntersectionPolygon(scene_mesh, ray);
+			if (intersection.found) {
+				PaintTexture(scene_mesh, intersection);
+			}
+			return;
+		}
 	};
 
 	auto set_click_state = [&](bool new_val) {
@@ -213,7 +316,7 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 			left_clicking_ = new_val;
 			context_->logfs << time(nullptr) << ": Paint" << (new_val ? "Start" : "End") << std::endl;
 		}
-		prev_tc_.release();
+		prev_mouse_pos_.release();
 	};
 
 	switch (e->getEventCode()) {
