@@ -83,12 +83,14 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
 		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
 		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+		input->addEventListener(this, InputEvent::EVENT_KEYDOWN);
+		input->addEventListener(this, InputEvent::EVENT_KEYUP);
 	}
 	pinch_start_sound_ = new Polycode::Sound("Resources/click7.wav");
 	pinch_end_sound_ = new Polycode::Sound("Resources/click21.wav");
 }
 
-const int kMouseMiddleButtonCode = 0;
+const int kMouseButtonCode = 0;
 const double kSensitivity = 1;
 
 void BoneManipulation::handleEvent(Polycode::Event *e) {
@@ -111,15 +113,31 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEDOWN:
 	{
 		auto ie = (InputEvent*)e;
-		if (ie->getMouseButton() == kMouseMiddleButtonCode)
+		if (ie->getMouseButton() == kMouseButtonCode && ctrl_pressed_)
 			OnPinchStart(fake_3d_coord(ie));
 		break;
 	}
 	case InputEvent::EVENT_MOUSEUP:
 	{
 		auto ie = (InputEvent*)e;
-		if (ie->getMouseButton() == kMouseMiddleButtonCode)
+		if (ie->getMouseButton() == kMouseButtonCode)
 			OnPinchEnd();
+		break;
+	}
+	case InputEvent::EVENT_KEYDOWN:
+	{
+		auto ie = (InputEvent*)e;
+		auto key = ie->getKey();
+		if (key == KEY_LCTRL || key == KEY_RCTRL)
+			ctrl_pressed_ = true;
+		break;
+	}
+	case InputEvent::EVENT_KEYUP:
+	{
+		auto ie = (InputEvent*)e;
+		auto key = ie->getKey();
+		if (key == KEY_LCTRL || key == KEY_RCTRL)
+			ctrl_pressed_ = false;
 		break;
 	}
 	}
@@ -187,9 +205,9 @@ static Polycode::Vector2 PinchPointOnWindow(cv::Point3f const& point) {
 }
 void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	pinch_prev_ = point;
-	cached_points_ = new std::deque<cv::Point3f>();
+	cached_points_.clear();
 	for (int i = 0; i < 6; i++) {
-		cached_points_->push_back(point);
+		cached_points_.push_back(point);
 	}
 
 	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 10.0);
@@ -228,10 +246,10 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 
 	if (current_target_ == nullptr)
 		return;
-	cached_points_->push_back(point);
-	cached_points_->pop_front();
+	cached_points_.push_back(point);
+	cached_points_.pop_front();
 	cv::Point3f point_new;
-	for (const auto point : *cached_points_) {
+	for (const auto point : cached_points_) {
 		point_new += point;
 	}
 	point_new *= (1 / 6.0f);
@@ -263,7 +281,6 @@ void BoneManipulation::OnPinchEnd() {
 		current_target_ = nullptr;
 		pinch_end_sound_->Play();
 	}
-	delete cached_points_;
 }
 
 BoneHandle* BoneManipulation::SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error) {

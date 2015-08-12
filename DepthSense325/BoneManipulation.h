@@ -40,7 +40,8 @@ private:
 	Polycode::Vector2 xy_rotation_center_;
 	cv::Point3f pinch_prev_;
 	volatile bool require_xy_rotation_center_recalculation_ = false;
-	std::deque<cv::Point3f> *cached_points_;
+	volatile bool ctrl_pressed_ = false;
+	std::deque<cv::Point3f> cached_points_;
 
 	BoneHandle* SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error = 0.1);
 };
