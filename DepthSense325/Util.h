@@ -12,6 +12,10 @@ void DisplayPinchMats(DepthMap const& depth_map, Option<cv::Point3f> const& pinc
 void ReportPxcBadStatus(const pxcStatus& status);
 Polycode::Vector2 CameraPointToScreen(Number x, Number y);
 
+// Polycode OpenCV conversions
+cv::Point ToCv(Polycode::Vector2 const& p, float ratio = 1);
+cv::Scalar ToCv(Polycode::Color const& c);
+
 // debug printers
 std::ostream& operator<<(std::ostream& os, Polycode::Matrix4 const& mat);
 std::ostream& operator<<(std::ostream& os, Polycode::Vector2 const& vec);
