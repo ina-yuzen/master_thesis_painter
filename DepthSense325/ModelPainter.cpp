@@ -206,12 +206,10 @@ static void overlay(cv::Mat& texture, cv::Mat const& new_paint) {
 		uchar* tp = texture.ptr<uchar>(y);
 		const uchar* np = new_paint.ptr<uchar>(y);
 		for (int x = 0; x < texture.cols; ++x) {
-			double opacity = ((double)np[x * 4 + 3]) / 255.;
-			if (opacity < 0.000001)
-				continue;
+			int alpha = np[x * 4 + 3];
 			for (int c = 0; c < 3; ++c) {
 				// swap channels because OpenCV is bgra, whereas polycode is rgba
-				tp[x * tc + c] = tp[x * tc + c] * (1. - opacity) + np[x * 4 + (2 - c)] * opacity;
+				tp[x * tc + c] = (tp[x * tc + c] * (256 - alpha) + np[x * 4 + (2 - c)] * alpha) >> 8;
 			}
 		}
 	}
@@ -265,7 +263,7 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 					bottom = screen[i].y;
 			}
 		}
-		cv::Mat mask(std::ceil(bottom - top), std::ceil(right - left), CV_8UC1, cv::Scalar(0));
+		cv::Mat mask(bottom - top + 1, right - left + 1, CV_8UC1, cv::Scalar(0));
 		cv::Point pts[3];
 		cv::Point2f zero_screen[3];
 		for (size_t i = 0; i < 3; i++) {
@@ -277,7 +275,7 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 		cv::fillPoly(mask, arr, npts, 1, cv::Scalar(255));
 		cv::Rect mask_on_canvas(left, top, mask.cols, mask.rows);
 		cv::Rect inter = mask_on_canvas & cv::Rect(cv::Point(0, 0), canvas_.size());
-		cv::Mat mask_roi = mask(inter - cv::Point(left, top));
+		cv::Mat mask_roi = mask((inter - cv::Point(left, top)) & cv::Rect(cv::Point(0, 0), mask.size()));
 		cv::Mat overlap;
 		canvas_(inter).copyTo(overlap, mask_roi);
 		if (!HasNonZero(overlap))
