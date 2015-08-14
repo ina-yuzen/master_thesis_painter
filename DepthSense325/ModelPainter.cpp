@@ -31,8 +31,8 @@ public:
 
 private:
 	std::shared_ptr<Context> context_;
-	Polycode::Scene *scene_;
-	MeshGroup *mesh_;
+	Polycode::Scene* scene_;
+	MeshGroup* mesh_;
 	Polycode::Vector2 last_pos_;
 	std::unique_ptr<PenPicker> picker_;
 	cv::Mat canvas_;
@@ -45,7 +45,7 @@ private:
 };
 
 void WorkerThreadMainLoop(std::atomic_bool* interrupted, PaintWorker* worker) {
-	std::chrono::duration<int, std::milli> loop(33);
+	std::chrono::milliseconds loop(33);
 	using std::chrono::system_clock;
 	system_clock::time_point start;
 	while (!interrupted->load()) {
@@ -53,7 +53,7 @@ void WorkerThreadMainLoop(std::atomic_bool* interrupted, PaintWorker* worker) {
 		worker->WorkOff();
 		auto end = system_clock::now();
 		if (end - start < loop) {
-			//Sleep((loop - (end - start)).count());
+			Sleep(std::chrono::duration_cast<std::chrono::milliseconds>(loop - (end - start)).count());
 		}
 	}
 }
@@ -271,19 +271,19 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 		cv::Mat mask_roi = mask((inter - cv::Point(left, top)) & cv::Rect(cv::Point(0, 0), mask.size()));
 		cv::Mat overlap;
 		canvas_(inter).copyTo(overlap, mask_roi);
+		if (!HasNonZero(overlap))
+			continue;
 
-		if (HasNonZero(overlap)) {
-			cv::ocl::oclMat g_overlap(overlap);
-			cv::Point2f tex[3];
-			for (size_t i = 0; i < 3; i++) {
-				auto uv = raw->getVertexTexCoordAtIndex(idx + i);
-				tex[i] = cv::Point2f(uv.x * width, uv.y * height);
-			}
-			auto trans = cv::getAffineTransform(zero_screen, tex);
-			cv::ocl::warpAffine(g_overlap, new_paint, trans, new_paint.size());
-			overlay(tex_mat, cv::Mat(new_paint));
-			updated = true;
+		cv::ocl::oclMat g_overlap(overlap);
+		cv::Point2f tex[3];
+		for (size_t i = 0; i < 3; i++) {
+			auto uv = raw->getVertexTexCoordAtIndex(idx + i);
+			tex[i] = cv::Point2f(uv.x * width, uv.y * height);
 		}
+		auto trans = cv::getAffineTransform(zero_screen, tex);
+		cv::ocl::warpAffine(g_overlap, new_paint, trans, new_paint.size());
+		overlay(tex_mat, cv::Mat(new_paint));
+		updated = true;
 
 		// optimize: start searcing from current index, and stop if 3 hits found
 		// FIXME: background faces are also selected (rarely occurs)

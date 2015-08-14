@@ -25,12 +25,18 @@ const std::map<Models, std::vector<std::wstring>> kManipulatableBones = ([] {
 	}
 	{
 		std::vector<std::wstring> v;
-		v.push_back(L"¶”¯‚P");
+		/*v.push_back(L"¶”¯‚P");
 		v.push_back(L"‰E”¯‚P");
 		v.push_back(L"¶˜r");
 		v.push_back(L"‰E˜r");
 		v.push_back(L"¶‘«");
-		v.push_back(L"‰E‘«");
+		v.push_back(L"‰E‘«");*/
+		v.push_back(L"left_hair1");
+		v.push_back(L"right_hair1");
+		v.push_back(L"left_arm");
+		v.push_back(L"right_arm");
+		v.push_back(L"left_leg");
+		v.push_back(L"right_leg");
 		map[Models::MIKU] = v;
 	}
 	return map;

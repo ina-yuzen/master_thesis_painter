@@ -66,7 +66,6 @@ Polycode::Material* createMaterial(std::string name) {
 
 // FIXME: misbehave against models without bone weights
 void MeshGroup::applyBoneMotion() {
-	return;
 	skeleton_->Update();
 	for (auto child : children) {
 		auto mesh = static_cast<EnhSceneMesh*>(child);
