@@ -119,6 +119,7 @@ const int kStampSize = 32; // on display
 	}
 
 void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
+	bool update_pos = false;
 	canvas_ = cv::Scalar(0, 0, 0, 0);
 	switch (picker_->current_brush()) {
 	case Brush::PEN:
@@ -131,12 +132,25 @@ void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
 		else {
 			cv::circle(canvas_, ToCv(mouse_pos, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
 		}
+		update_pos = true;
 	}
 		break;
 	case Brush::STAMP:
 		if (prev_mouse_pos_ == nullptr || mouse_pos.distance(*prev_mouse_pos_) > kStampSize) {
+			update_pos = true;
 			auto left_top = ToCv(mouse_pos) - cv::Point(kStampSize / 2, kStampSize / 2);
-			cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4, picker_->current_stamp()->getTextureData());
+			cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4);
+			auto tex = picker_->current_stamp()->getTextureData();
+			// correct y-reverse and rgba -> bgra
+			for (size_t y = 0; y < kStampSize; y++) {
+				auto ptr = stamp_mat.ptr<uchar>(y);
+				auto inv_y = kStampSize - y - 1;
+				for (size_t x = 0; x < kStampSize; x++) {
+					for (size_t i = 0; i < 4; i++) {
+						ptr[x * 4 + i] = tex[(inv_y * kStampSize + x) * 4 + (i < 3 ? (2 - i) : i)];
+					}
+				}
+			}
 			cv::Rect dest_rect(
 				kDisplayCanvasRatio * std::max(left_top.x, 0),
 				kDisplayCanvasRatio * std::max(left_top.y, 0),
@@ -158,6 +172,13 @@ void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
 			src_roi.copyTo(dest_roi, channels[3]);
 		}
 		break;
+	}
+	if (update_pos) {
+		if (prev_mouse_pos_) {
+			*prev_mouse_pos_ = mouse_pos;
+		} else {
+			prev_mouse_pos_.reset(new Polycode::Vector2(mouse_pos));
+		}
 	}
 }
 
@@ -217,11 +238,6 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 
 	std::unordered_set<unsigned int> visited;
 	std::deque<unsigned int> waiting;
-	auto add_index = [&visited, &waiting](unsigned int idx) {
-		if (visited.find(idx) == visited.end() && idx % 3 == 0)
-			waiting.push_front(idx);
-	};
-
 	bool updated = false;
 	waiting.push_front(intersection.first_vertex_index);
 
@@ -280,23 +296,25 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 
 		// optimize: start searcing from current index, and stop if 3 hits found
 		auto ia = raw->indexArray.data;
-		auto v1 = ia[idx], v2 = ia[idx + 1], v3 = ia[idx + 2];
+		auto v1 = raw->getVertexPositionAtIndex(idx), 
+			v2 = raw->getVertexPositionAtIndex(idx + 1), 
+			v3 = raw->getVertexPositionAtIndex(idx + 2);
 		for (size_t i = 0, size = raw->indexArray.getDataSize(); i < size; i += 3) {
-			auto t1 = ia[i], t2 = ia[i + 1], t3 = ia[i + 2];
-			if (v1 == t3 && v2 == t2 || v1 == t2 && v2 == t3 
+			auto t1 = raw->getVertexPositionAtIndex(i),
+				t2 = raw->getVertexPositionAtIndex(i + 1),
+				t3 = raw->getVertexPositionAtIndex(i + 2);
+			if (visited.find(i) == visited.end()
+				&&(v1 == t3 && v2 == t2 || v1 == t2 && v2 == t3 
 				|| v1 == t3 && v3 == t2 || v1 == t2 && v3 == t3
-				|| v3 == t3 && v2 == t2 || v3 == t2 && v2 == t3) {
-				add_index(t1);
-			}
-			if (v1 == t1 && v2 == t3 || v1 == t3 && v2 == t1 
+				|| v3 == t3 && v2 == t2 || v3 == t2 && v2 == t3
+				|| v1 == t1 && v2 == t3 || v1 == t3 && v2 == t1 
 				|| v1 == t1 && v3 == t3 || v1 == t3 && v3 == t1
-				|| v3 == t1 && v2 == t3 || v3 == t3 && v2 == t1) {
-				add_index(t2);
-			}
-			if (v1 == t1 && v2 == t2 || v1 == t2 && v2 == t1 
+				|| v3 == t1 && v2 == t3 || v3 == t3 && v2 == t1
+				|| v1 == t1 && v2 == t2 || v1 == t2 && v2 == t1 
 				|| v1 == t1 && v3 == t2 || v1 == t2 && v3 == t1
-				|| v3 == t1 && v2 == t2 || v3 == t2 && v2 == t1) {
-				add_index(t3);
+				|| v3 == t1 && v2 == t2 || v3 == t2 && v2 == t1)) {
+
+				waiting.push_front(i);
 			}
 		}
 	}
@@ -315,11 +333,6 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		auto intersection = FindIntersectionPolygon(mesh_->getSceneMeshes(), ray);
 		if (intersection.found) {
 			PaintTexture(intersection);
-		}
-		if (prev_mouse_pos_) {
-			*prev_mouse_pos_ = mouse_pos;
-		} else {
-			prev_mouse_pos_.reset(new Polycode::Vector2(mouse_pos));
 		}
 	};
 
