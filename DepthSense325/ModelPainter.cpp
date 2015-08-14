@@ -35,12 +35,13 @@ private:
 	MeshGroup* mesh_;
 	Polycode::Vector2 last_pos_;
 	std::unique_ptr<PenPicker> picker_;
-	cv::Mat canvas_;
+	std::unique_ptr<cv::Mat> front_canvas_, back_canvas_;
+	std::atomic_bool front_dirty_;
 	Polycode::Matrix4 camera_, projection_;
 	Polycode::Rectangle view_;
 	std::vector<Polycode::Texture*> dirty_textures_;
 
-	bool PrepareCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next);
+	bool PaintCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next);
 	void PaintTexture(Intersection const& intersection);
 };
 
@@ -117,7 +118,8 @@ PaintWorker::PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scen
 	scene_(scene),
 	mesh_(mesh),
 	last_pos_(kInvalidPoint),
-	canvas_(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4) {
+	front_canvas_(new cv::Mat(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4)),
+	back_canvas_(new cv::Mat(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4)) {
 
 	picker_.reset(new PenPicker(context));
 }
@@ -126,16 +128,16 @@ inline bool operator ==(const Polycode::Vector2 &a, const Polycode::Vector2 &b) 
 	return a.x == b.x && a.y == b.y;
 }
 
-bool PaintWorker::PrepareCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next) {
+bool PaintWorker::PaintCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next) {
 	switch (picker_->current_brush()) {
 	case Brush::PEN:
 	{
 		int cv_pen_size = PenPicker::DisplaySize(picker_->current_size()) * kDisplayCanvasRatio / 2;
 		if (last == kInvalidPoint) {
-			cv::circle(canvas_, ToCv<cv::Point>(next, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
+			cv::circle(*front_canvas_, ToCv<cv::Point>(next, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
 			return true;
 		} else if (next.distance(last) > kPenMoveThreshold) {
-			cv::line(canvas_, ToCv<cv::Point>(last, kDisplayCanvasRatio), ToCv<cv::Point>(next, kDisplayCanvasRatio),
+			cv::line(*front_canvas_, ToCv<cv::Point>(last, kDisplayCanvasRatio), ToCv<cv::Point>(next, kDisplayCanvasRatio),
 				ToCv(picker_->current_color()), cv_pen_size);
 			return true;
 		}
@@ -161,7 +163,7 @@ bool PaintWorker::PrepareCanvas(Polycode::Vector2 const& last, Polycode::Vector2
 				kDisplayCanvasRatio * std::max(left_top.y, 0),
 				kDisplayCanvasRatio * std::min({ kStampSize, kStampSize + left_top.x, kWinWidth - left_top.x }),
 				kDisplayCanvasRatio * std::min({ kStampSize, kStampSize + left_top.y, kWinHeight - left_top.y }));
-			cv::Mat dest_roi(canvas_, dest_rect);
+			cv::Mat dest_roi(*front_canvas_, dest_rect);
 			if (kDisplayCanvasRatio != 1) {
 				cv::Mat resized(kStampSize * kDisplayCanvasRatio, kStampSize * kDisplayCanvasRatio, CV_8UC4);
 				cv::resize(stamp_mat, resized, resized.size());
@@ -267,10 +269,10 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 		int npts[] = { 3 };
 		cv::fillPoly(mask, arr, npts, 1, cv::Scalar(255));
 		cv::Rect mask_on_canvas(left, top, mask.cols, mask.rows);
-		cv::Rect inter = mask_on_canvas & cv::Rect(cv::Point(0, 0), canvas_.size());
+		cv::Rect inter = mask_on_canvas & cv::Rect(cv::Point(0, 0), back_canvas_->size());
 		cv::Mat mask_roi = mask((inter - cv::Point(left, top)) & cv::Rect(cv::Point(0, 0), mask.size()));
 		cv::Mat overlap;
-		canvas_(inter).copyTo(overlap, mask_roi);
+		(*back_canvas_)(inter).copyTo(overlap, mask_roi);
 		if (!HasNonZero(overlap))
 			continue;
 
@@ -316,18 +318,23 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 }
 
 void PaintWorker::UpdateNextPoint(Polycode::Vector2 const& p) {
-	if (!PrepareCanvas(last_pos_, p))
+	if (!PaintCanvas(last_pos_, p))
 		return;
+	front_dirty_.store(true);
 	last_pos_ = p;
 }
 
 void PaintWorker::WorkOff() {
+	if (!front_dirty_.exchange(false)) {
+		return;
+	}
+	std::swap(front_canvas_, back_canvas_);
 	auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), last_pos_);
 	auto intersection = FindIntersectionPolygon(mesh_->getSceneMeshes(), ray);
 	if (intersection.found) {
 		PaintTexture(intersection);
 	}
-	canvas_ = cv::Scalar(0, 0, 0, 0);
+	*back_canvas_ = cv::Scalar(0, 0, 0, 0);
 }
 
 void PaintWorker::UpdateOnMain() {
