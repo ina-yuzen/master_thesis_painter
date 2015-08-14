@@ -24,7 +24,7 @@ private:
 	cv::Mat canvas_;
 	bool left_clicking_;
 	void PrepareCanvas(Polycode::Vector2 const& mouse_pos);
-	void PaintTexture(Polycode::SceneMesh *mesh, Intersection const& intersection);
+	void PaintTexture(Intersection const& intersection);
 };
 
 }

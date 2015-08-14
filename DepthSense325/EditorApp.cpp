@@ -60,17 +60,22 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	if (!mesh_) {
 		throw std::runtime_error("Could not load mesh");
 	}
-	mesh_->setScale(0.03, 0.03, 0.03);
 	scene->addEntity(mesh_);
 	scene->useClearColor = false;
 
 	auto light = new SceneLight(SceneLight::POINT_LIGHT, scene, 100);
 	light->setPosition(7, 7, 7);
 	scene->addLight(light);
+	light = new SceneLight(SceneLight::POINT_LIGHT, scene, 100);
+	light->setPosition(-7, 7, 7);
+	scene->addLight(light);
+	light = new SceneLight(SceneLight::POINT_LIGHT, scene, 100);
+	light->setPosition(7, -7, 7);
+	scene->addLight(light);
 	scene->enableLighting(true);
 
 	auto cam = 	scene->getActiveCamera();
-	cam->setPosition(0, 0, 20);
+	cam->setPosition(0, 0, 5);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
 	if (context->operation_mode == OperationMode::MidAirMode) {

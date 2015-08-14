@@ -37,6 +37,7 @@ const int kStampSize = 32; // on display
 	// http://geomalgorithms.com/a06-_intersect-2.html#intersect3D_RayTriangle()
 	struct Intersection {
 		bool found;
+		Polycode::SceneMesh *scene_mesh;
 		int first_vertex_index;
 		Polycode::Vector3 point;
 	};
@@ -83,26 +84,28 @@ const int kStampSize = 32; // on display
 		return res;
 	}
 
-	static Intersection FindIntersectionPolygon(Polycode::SceneMesh *mesh, const Polycode::Ray& ray) {
-		auto raw = mesh->getMesh();
+	static Intersection FindIntersectionPolygon(vector<Polycode::SceneMesh*> const& meshes, const Polycode::Ray& ray) {
 		Intersection best;
 		best.found = false;
 		double distance = 1e10;
 
-		std::vector<Polycode::Vector3> adjusted_points = ActualVertexPositions(mesh);
-
-		int step = raw->getIndexGroupSize();
-		for (int ii = 0; ii < raw->getIndexCount(); ii += step) {
-			auto idx0 = raw->indexArray.data[ii],
-				idx1 = raw->indexArray.data[ii + 1],
-				idx2 = raw->indexArray.data[ii + 2];
-			auto res = CalculateIntersectionPoint(ray, adjusted_points[idx0], adjusted_points[idx1], adjusted_points[idx2]);
-			if (res.found) {
-				res.first_vertex_index = ii;
-				auto this_dist = res.point.distance(ray.origin);
-				if (distance > this_dist) {
-					best = res;
-					distance = this_dist;
+		for (auto mesh : meshes) {
+			auto raw = mesh->getMesh();
+			std::vector<Polycode::Vector3> adjusted_points = ActualVertexPositions(mesh);
+			int step = raw->getIndexGroupSize();
+			for (int ii = 0; ii < raw->getIndexCount(); ii += step) {
+				auto idx0 = raw->indexArray.data[ii],
+					idx1 = raw->indexArray.data[ii + 1],
+					idx2 = raw->indexArray.data[ii + 2];
+				auto res = CalculateIntersectionPoint(ray, adjusted_points[idx0], adjusted_points[idx1], adjusted_points[idx2]);
+				if (res.found) {
+					res.first_vertex_index = ii;
+					res.scene_mesh = mesh;
+					auto this_dist = res.point.distance(ray.origin);
+					if (distance > this_dist) {
+						best = std::move(res);
+						distance = this_dist;
+					}
 				}
 			}
 		}
@@ -120,7 +123,7 @@ void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
 	switch (picker_->current_brush()) {
 	case Brush::PEN:
 	{
-		int cv_pen_size = PenPicker::DisplaySize(picker_->current_size()) * kDisplayCanvasRatio;
+		int cv_pen_size = PenPicker::DisplaySize(picker_->current_size()) * kDisplayCanvasRatio / 2;
 		if (prev_mouse_pos_) {
 			cv::line(canvas_, ToCv(*prev_mouse_pos_, kDisplayCanvasRatio), ToCv(mouse_pos, kDisplayCanvasRatio),
 				ToCv(picker_->current_color()), cv_pen_size);
@@ -186,14 +189,17 @@ static void overlay(cv::Mat& texture, cv::Mat const& new_paint) {
 			if (opacity < 0.000001)
 				continue;
 			for (int c = 0; c < 3; ++c) {
-				tp[x * tc + c] = tp[x * tc + c] * (1. - opacity) + np[x * 4 + c] * opacity;
+				// swap channels because OpenCV is bgra, whereas polycode is rgba
+				tp[x * tc + c] = tp[x * tc + c] * (1. - opacity) + np[x * 4 + (2 - c)] * opacity;
 			}
 		}
 	}
 }
 
-void ModelPainter::PaintTexture(Polycode::SceneMesh *mesh, Intersection const& intersection) {
+void ModelPainter::PaintTexture(Intersection const& intersection) {
+	auto mesh = intersection.scene_mesh;
 	auto raw = mesh->getMesh();
+	assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
 	auto buffer = texture->getTextureData();
@@ -212,10 +218,11 @@ void ModelPainter::PaintTexture(Polycode::SceneMesh *mesh, Intersection const& i
 	std::unordered_set<unsigned int> visited;
 	std::deque<unsigned int> waiting;
 	auto add_index = [&visited, &waiting](unsigned int idx) {
-		if (visited.find(idx) == visited.end())
+		if (visited.find(idx) == visited.end() && idx % 3 == 0)
 			waiting.push_front(idx);
 	};
 
+	bool updated = false;
 	waiting.push_front(intersection.first_vertex_index);
 
 	while (!waiting.empty()) {
@@ -226,7 +233,8 @@ void ModelPainter::PaintTexture(Polycode::SceneMesh *mesh, Intersection const& i
 		cv::Point2f screen[3];
 		float left, top, right, bottom;
 		for (size_t i = 0; i < 3; i++) {
-			screen[i] = ToCv(renderer->Project(camera, projection, view, vertex_positions[i]));
+			auto v = vertex_positions[raw->indexArray.data[idx + i]];
+			screen[i] = ToCv(renderer->Project(camera, projection, view, v));
 			if (i == 0) {
 				left = right = screen[i].x;
 				top = bottom = screen[i].y;
@@ -241,35 +249,39 @@ void ModelPainter::PaintTexture(Polycode::SceneMesh *mesh, Intersection const& i
 					bottom = screen[i].y;
 			}
 		}
+		std::cout << left << ", " << top << ", " << right << "," << bottom << std::endl;
 		cv::Mat mask(std::ceil(bottom - top), std::ceil(right - left), CV_8UC1, cv::Scalar(0));
 		cv::Point pts[3];
+		cv::Point2f zero_screen[3];
 		for (size_t i = 0; i < 3; i++) {
-			pts[i] = cv::Point(screen[i].x - left, screen[i].y - top);
+			zero_screen[i] = cv::Point2f(screen[i].x - left, screen[i].y - top);
+			pts[i] = zero_screen[i];
 		}
 		const cv::Point *arr[1] = { pts };
 		int npts[] = { 3 };
 		cv::fillPoly(mask, arr, npts, 1, cv::Scalar(255));
 		cv::Rect mask_on_canvas(left, top, mask.cols, mask.rows);
 		cv::Rect inter = mask_on_canvas & cv::Rect(cv::Point(0, 0), canvas_.size());
-		cv::Mat mask_roi = mask(inter + cv::Point(std::max(static_cast<int>(std::floor(-left)), 0), std::max(static_cast<int>(std::floor(-top)), 0)));
+		cv::Mat mask_roi = mask(inter + cv::Point(std::min(static_cast<int>(std::floor(-left)), 0), std::min(static_cast<int>(std::floor(-top)), 0)));
 		cv::Mat overlap;
 		canvas_(inter).copyTo(overlap, mask_roi);
 		if (!HasNonZero(overlap))
 			continue;
 
-		cv::Point2f tex[3]; 
+		cv::Point2f tex[3];
 		for (size_t i = 0; i < 3; i++) {
-			auto uv = raw->getVertexTexCoordAtIndex(idx);
+			auto uv = raw->getVertexTexCoordAtIndex(idx + i);
 			tex[i] = cv::Point2f(uv.x * width, uv.y * height);
 		}
-		auto trans = cv::getAffineTransform(screen, tex);
+		auto trans = cv::getAffineTransform(zero_screen, tex);
 		cv::warpAffine(overlap, new_paint, trans, new_paint.size());
 		overlay(tex_mat, new_paint);
+		updated = true;
 
 		// optimize: start searcing from current index, and stop if 3 hits found
 		auto ia = raw->indexArray.data;
 		auto v1 = ia[idx], v2 = ia[idx + 1], v3 = ia[idx + 2];
-		for (size_t i = 0, size = raw->indexArray.getDataSize() / 3; i < size; i += 3) {
+		for (size_t i = 0, size = raw->indexArray.getDataSize(); i < size; i += 3) {
 			auto t1 = ia[i], t2 = ia[i + 1], t3 = ia[i + 2];
 			if (v1 == t3 && v2 == t2 || v1 == t2 && v2 == t3 
 				|| v1 == t3 && v3 == t2 || v1 == t2 && v3 == t3
@@ -288,6 +300,8 @@ void ModelPainter::PaintTexture(Polycode::SceneMesh *mesh, Intersection const& i
 			}
 		}
 	}
+	if (updated)
+		texture->recreateFromImageData();
 }
 
 void ModelPainter::handleEvent(Polycode::Event *e) {
@@ -296,17 +310,16 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		InputEvent *ie = (InputEvent*)e;
 		auto mouse_pos = ie->getMousePosition();
 		PrepareCanvas(mouse_pos);
-		cv::imshow("win", canvas_);
 
 		auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), mouse_pos);
-		for (auto scene_mesh : mesh_->getSceneMeshes()) {
-			auto raw = scene_mesh->getMesh();
-			assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
-			auto intersection = FindIntersectionPolygon(scene_mesh, ray);
-			if (intersection.found) {
-				PaintTexture(scene_mesh, intersection);
-			}
-			return;
+		auto intersection = FindIntersectionPolygon(mesh_->getSceneMeshes(), ray);
+		if (intersection.found) {
+			PaintTexture(intersection);
+		}
+		if (prev_mouse_pos_) {
+			*prev_mouse_pos_ = mouse_pos;
+		} else {
+			prev_mouse_pos_.reset(new Polycode::Vector2(mouse_pos));
 		}
 	};
 
