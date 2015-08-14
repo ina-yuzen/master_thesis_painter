@@ -473,9 +473,6 @@ MeshGroup* ModelLoader::loadMesh() {
 		std::cerr << "Animation is not yet supported." << std::endl;
 	}
 
-	//group_->Scale(0.3, 0.3, 0.3);
-	//group_->Translate(0, -3, 0);
-
 	// init position
 	group_->applyBoneMotion();
 

@@ -35,7 +35,11 @@ Polycode::SceneMesh* LoadMesh(Models model) {
 MeshGroup* LoadMesh2(Models model) {
 	switch (model) {
 	case Models::MIKU:
-		return importCollada("Resources/test4.dae");
+	{
+		auto group = importCollada("Resources/test4.dae");
+		group->Scale(15);
+		return group;
+	}
 	default:
 		std::cout << "Unknown model" << std::endl;
 		assert(false);
