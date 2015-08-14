@@ -65,10 +65,8 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
 	{
 		auto b = skeleton->getBone(bidx);
-		if (b) {
-			bone_id_map[b] = bidx;
-			b->disableAnimation = true;
-		}
+		bone_id_map[b] = bidx;
+		b->disableAnimation = true;
 	}
 	auto centers = CalculateBoneCenters(mesh);
 	for (auto name: kManipulatableBones.at(model)) {
