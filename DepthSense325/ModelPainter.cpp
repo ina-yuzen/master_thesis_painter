@@ -126,11 +126,11 @@ void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
 	{
 		int cv_pen_size = PenPicker::DisplaySize(picker_->current_size()) * kDisplayCanvasRatio / 2;
 		if (prev_mouse_pos_) {
-			cv::line(canvas_, ToCv(*prev_mouse_pos_, kDisplayCanvasRatio), ToCv(mouse_pos, kDisplayCanvasRatio),
+			cv::line(canvas_, ToCv<cv::Point>(*prev_mouse_pos_, kDisplayCanvasRatio), ToCv<cv::Point>(mouse_pos, kDisplayCanvasRatio),
 				ToCv(picker_->current_color()), cv_pen_size);
 		}
 		else {
-			cv::circle(canvas_, ToCv(mouse_pos, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
+			cv::circle(canvas_, ToCv<cv::Point>(mouse_pos, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
 		}
 		update_pos = true;
 	}
@@ -138,7 +138,7 @@ void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
 	case Brush::STAMP:
 		if (prev_mouse_pos_ == nullptr || mouse_pos.distance(*prev_mouse_pos_) > kStampSize) {
 			update_pos = true;
-			auto left_top = ToCv(mouse_pos) - cv::Point(kStampSize / 2, kStampSize / 2);
+			auto left_top = ToCv<cv::Point>(mouse_pos) - cv::Point(kStampSize / 2, kStampSize / 2);
 			cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4);
 			auto tex = picker_->current_stamp()->getTextureData();
 			// correct y-reverse and rgba -> bgra
@@ -250,7 +250,7 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 		float left, top, right, bottom;
 		for (size_t i = 0; i < 3; i++) {
 			auto v = vertex_positions[raw->indexArray.data[idx + i]];
-			screen[i] = ToCv(renderer->Project(camera, projection, view, v));
+			screen[i] = ToCv<cv::Point2f>(renderer->Project(camera, projection, view, v));
 			if (i == 0) {
 				left = right = screen[i].x;
 				top = bottom = screen[i].y;
@@ -265,7 +265,6 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 					bottom = screen[i].y;
 			}
 		}
-		std::cout << left << ", " << top << ", " << right << "," << bottom << std::endl;
 		cv::Mat mask(std::ceil(bottom - top), std::ceil(right - left), CV_8UC1, cv::Scalar(0));
 		cv::Point pts[3];
 		cv::Point2f zero_screen[3];
@@ -278,7 +277,7 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 		cv::fillPoly(mask, arr, npts, 1, cv::Scalar(255));
 		cv::Rect mask_on_canvas(left, top, mask.cols, mask.rows);
 		cv::Rect inter = mask_on_canvas & cv::Rect(cv::Point(0, 0), canvas_.size());
-		cv::Mat mask_roi = mask(inter + cv::Point(std::min(static_cast<int>(std::floor(-left)), 0), std::min(static_cast<int>(std::floor(-top)), 0)));
+		cv::Mat mask_roi = mask(inter - cv::Point(left, top));
 		cv::Mat overlap;
 		canvas_(inter).copyTo(overlap, mask_roi);
 		if (!HasNonZero(overlap))

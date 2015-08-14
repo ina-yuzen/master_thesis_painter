@@ -10,7 +10,7 @@ namespace mobamas {
 
 const int kDistance = sqrt(27.0);
 const double kSensitivity = 1;
-const double kWheelScaleStep = 0.1;
+const double kWheelScaleStep = 1.05;
 
 ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh): 
 	context_(context),
@@ -106,10 +106,10 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 			rotate_by_diff(((InputEvent*)e)->getMousePosition());
 		break;
 	case InputEvent::EVENT_MOUSEWHEEL_UP:
-		mesh_->setScale(mesh_->getScale() + Polycode::Vector3(kWheelScaleStep, kWheelScaleStep, kWheelScaleStep));
+		mesh_->Scale(kWheelScaleStep);
 		break;
 	case InputEvent::EVENT_MOUSEWHEEL_DOWN:
-		mesh_->setScale(mesh_->getScale() - Polycode::Vector3(kWheelScaleStep, kWheelScaleStep, kWheelScaleStep));
+		mesh_->Scale(1. / kWheelScaleStep);
 		break;
 	}
 }

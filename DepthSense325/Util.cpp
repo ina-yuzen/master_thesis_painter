@@ -165,10 +165,6 @@ namespace mobamas {
 		}
 	}
 
-	cv::Point ToCv(Polycode::Vector2 const& p, float ratio/* = 1*/) {
-		return cv::Point(p.x * ratio, p.y * ratio);
-	}
-
 	cv::Scalar ToCv(Polycode::Color const& c) {
 		return cv::Scalar(c.b * 255, c.g * 255, c.r * 255, c.a * 255);
 	}

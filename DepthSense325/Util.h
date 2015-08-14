@@ -13,7 +13,11 @@ void ReportPxcBadStatus(const pxcStatus& status);
 Polycode::Vector2 CameraPointToScreen(Number x, Number y);
 
 // Polycode OpenCV conversions
-cv::Point ToCv(Polycode::Vector2 const& p, float ratio = 1);
+template <typename T>
+T ToCv(Polycode::Vector2 const& p, float ratio = 1){
+	return T(p.x * ratio, p.y * ratio);
+}
+
 cv::Scalar ToCv(Polycode::Color const& c);
 
 // debug printers
