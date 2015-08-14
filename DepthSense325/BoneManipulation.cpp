@@ -117,14 +117,19 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEMOVE:
 	{
 		auto ie = (InputEvent*)e;
-		OnPinchMove(fake_3d_coord(ie));
+		if (ctrl_pressed_) {
+			OnPinchMove(fake_3d_coord(ie));
+			e->cancelEvent();
+		}
 		break;
 	}
 	case InputEvent::EVENT_MOUSEDOWN:
 	{
 		auto ie = (InputEvent*)e;
-		if (ie->getMouseButton() == kMouseButtonCode && ctrl_pressed_)
+		if (ie->getMouseButton() == kMouseButtonCode && ctrl_pressed_) {
 			OnPinchStart(fake_3d_coord(ie));
+			e->cancelEvent();
+		}
 		break;
 	}
 	case InputEvent::EVENT_MOUSEUP:
