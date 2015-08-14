@@ -99,7 +99,12 @@ bool EditorApp::Update() {
 	// bone_manipulation_->Update();
 	if (hand_visualization_)
 		hand_visualization_->Update();
+	painter_->Update();
 	return core_->updateAndRender();
+}
+
+void EditorApp::Shutdown() {
+	painter_->Shutdown();
 }
 
 }

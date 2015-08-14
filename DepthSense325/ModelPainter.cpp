@@ -1,12 +1,15 @@
 #include "ModelPainter.h"
 
+#include <chrono>
 #include <ctime>
 #include <unordered_set>
 #include <opencv2\opencv.hpp>
+#include <opencv2\ocl\ocl.hpp>
 
 #include "Context.h"
 #include "EditorApp.h"
 #include "Import.h"
+#include "Intersection.h"
 #include "PenPicker.h"
 #include "Util.h"
 
@@ -15,130 +18,132 @@ namespace mobamas {
 const int kMouseLeftButtonCode = 0;
 const float kDisplayCanvasRatio = 1; // set < 1 to reduce canvas size
 const int kStampSize = 32; // on display
+const int kPenMoveThreshold = 5;
+const Polycode::Vector2 kInvalidPoint(-1, -1);
 
-	ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh) :
-		context_(context),
-		EventHandler(),
-		scene_(scene),
-		mesh_(mesh),
-		prev_mouse_pos_(),
-		canvas_(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4),
-		left_clicking_(false)
-	{
-		picker_.reset(new PenPicker(context));
+class PaintWorker {
+public:
+	PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh);
+	void UpdateNextPoint(Polycode::Vector2 const& p);
+	void FinishPainting() { last_pos_ = kInvalidPoint; }
+	void WorkOff();
+	void UpdateOnMain();
 
-		auto input = Polycode::CoreServices::getInstance()->getInput();
-		using Polycode::InputEvent;
-		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
-		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
-		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+private:
+	std::shared_ptr<Context> context_;
+	Polycode::Scene *scene_;
+	MeshGroup *mesh_;
+	Polycode::Vector2 last_pos_;
+	std::unique_ptr<PenPicker> picker_;
+	cv::Mat canvas_;
+	Polycode::Matrix4 camera_, projection_;
+	Polycode::Rectangle view_;
+	std::vector<Polycode::Texture*> dirty_textures_;
+
+	bool PrepareCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next);
+	void PaintTexture(Intersection const& intersection);
+};
+
+void WorkerThreadMainLoop(std::atomic_bool* interrupted, PaintWorker* worker) {
+	std::chrono::duration<int, std::milli> loop(33);
+	using std::chrono::system_clock;
+	system_clock::time_point start;
+	while (!interrupted->load()) {
+		start = system_clock::now();
+		worker->WorkOff();
+		auto end = system_clock::now();
+		if (end - start < loop) {
+			//Sleep((loop - (end - start)).count());
+		}
 	}
+}
 
-	// http://geomalgorithms.com/a06-_intersect-2.html#intersect3D_RayTriangle()
-	struct Intersection {
-		bool found;
-		Polycode::SceneMesh *scene_mesh;
-		int first_vertex_index;
-		Polycode::Vector3 point;
+ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh) :
+    EventHandler(),
+    context_(context),
+    worker_(new PaintWorker(context, scene, mesh)),
+	inturrupted_(),
+	left_clicking_(false) {
+
+	inturrupted_.store(false);
+	worker_thread_ = std::move(std::thread(WorkerThreadMainLoop, &inturrupted_, worker_.get()));
+
+	auto input = Polycode::CoreServices::getInstance()->getInput();
+	using Polycode::InputEvent;
+	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
+	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+}
+
+void ModelPainter::handleEvent(Polycode::Event *e) {
+	using Polycode::InputEvent;
+	InputEvent *ie = (InputEvent*)e;
+
+	auto set_click_state = [&](bool new_val) {
+		if (ie->mouseButton == kMouseLeftButtonCode) {
+			left_clicking_ = new_val;
+			context_->logfs << time(nullptr) << ": Paint" << (new_val ? "Start" : "End") << std::endl;
+		}
 	};
 
-	const double kEpsilon = 0.000001;
-
-	static Intersection CalculateIntersectionPoint(const Polycode::Ray& ray,
-		const Polycode::Vector3& v0,
-		const Polycode::Vector3& v1,
-		const Polycode::Vector3& v2)
-	{
-		Intersection res;
-		res.found = false;
-		auto u = v1 - v0, v = v2 - v0;
-		auto normal = u.crossProduct(v);
-		if (normal.length() < kEpsilon) {
-			return res;
+	switch (e->getEventCode()) {
+	case InputEvent::EVENT_MOUSEMOVE:
+		if (left_clicking_) {
+			worker_->UpdateNextPoint(ie->getMousePosition());
 		}
-		auto w0 = ray.origin - v0;
-		auto a = -normal.dot(w0);
-		auto b = normal.dot(ray.direction);
-		if (fabs(b) < kEpsilon) {
-			return res;
-		}
-		auto r = a / b;
-		if (r < 0.0) {
-			return res;
-		}
-		auto intersection = ray.origin + ray.direction * r;
-
-		auto uu = u.dot(u), uv = u.dot(v), vv = v.dot(v);
-		auto w = intersection - v0;
-		auto wu = w.dot(u), wv = w.dot(v);
-		auto d = uv * uv - uu * vv;
-
-		auto s = (uv * wv - vv * wu) / d;
-		if (s < 0.0 || s > 1.0)
-			return res;
-		auto t = (uv * wu - uu * wv) / d;
-		if (t < 0.0 || (s + t) > 1.0)
-			return res;
-		res.found = true;
-		res.point = intersection;
-		return res;
+		break;
+	case InputEvent::EVENT_MOUSEDOWN:
+		set_click_state(true);
+		worker_->UpdateNextPoint(ie->getMousePosition());
+		break;
+	case InputEvent::EVENT_MOUSEUP:
+		set_click_state(false);
+		worker_->FinishPainting();
+		break;
 	}
+}
 
-	static Intersection FindIntersectionPolygon(vector<Polycode::SceneMesh*> const& meshes, const Polycode::Ray& ray) {
-		Intersection best;
-		best.found = false;
-		double distance = 1e10;
+void ModelPainter::Update() {
+	worker_->UpdateOnMain();
+}
 
-		for (auto mesh : meshes) {
-			auto raw = mesh->getMesh();
-			std::vector<Polycode::Vector3> adjusted_points = ActualVertexPositions(mesh);
-			int step = raw->getIndexGroupSize();
-			for (int ii = 0; ii < raw->getIndexCount(); ii += step) {
-				auto idx0 = raw->indexArray.data[ii],
-					idx1 = raw->indexArray.data[ii + 1],
-					idx2 = raw->indexArray.data[ii + 2];
-				auto res = CalculateIntersectionPoint(ray, adjusted_points[idx0], adjusted_points[idx1], adjusted_points[idx2]);
-				if (res.found) {
-					res.first_vertex_index = ii;
-					res.scene_mesh = mesh;
-					auto this_dist = res.point.distance(ray.origin);
-					if (distance > this_dist) {
-						best = std::move(res);
-						distance = this_dist;
-					}
-				}
-			}
-		}
-		return best;
-	}
+void ModelPainter::Shutdown() {
+	inturrupted_.store(true);
+	worker_thread_.join();
+}
 
-	typedef std::pair<int, int> TP;
-	static int Interpolate(const TP& start, const TP& end, int y) {
-		double ratio = (y - start.second) / static_cast<double>(end.second - start.second);
-		return start.first * (1 - ratio) + end.first * ratio;
-	}
+PaintWorker::PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh) : 
+	context_(context),
+	scene_(scene),
+	mesh_(mesh),
+	last_pos_(kInvalidPoint),
+	canvas_(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4) {
 
-void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
-	bool update_pos = false;
-	canvas_ = cv::Scalar(0, 0, 0, 0);
+	picker_.reset(new PenPicker(context));
+}
+
+inline bool operator ==(const Polycode::Vector2 &a, const Polycode::Vector2 &b) {
+	return a.x == b.x && a.y == b.y;
+}
+
+bool PaintWorker::PrepareCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next) {
 	switch (picker_->current_brush()) {
 	case Brush::PEN:
 	{
 		int cv_pen_size = PenPicker::DisplaySize(picker_->current_size()) * kDisplayCanvasRatio / 2;
-		if (prev_mouse_pos_) {
-			cv::line(canvas_, ToCv<cv::Point>(*prev_mouse_pos_, kDisplayCanvasRatio), ToCv<cv::Point>(mouse_pos, kDisplayCanvasRatio),
+		if (last == kInvalidPoint) {
+			cv::circle(canvas_, ToCv<cv::Point>(next, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
+			return true;
+		} else if (next.distance(last) > kPenMoveThreshold) {
+			cv::line(canvas_, ToCv<cv::Point>(last, kDisplayCanvasRatio), ToCv<cv::Point>(next, kDisplayCanvasRatio),
 				ToCv(picker_->current_color()), cv_pen_size);
+			return true;
 		}
-		else {
-			cv::circle(canvas_, ToCv<cv::Point>(mouse_pos, kDisplayCanvasRatio), cv_pen_size, ToCv(picker_->current_color()), -1);
-		}
-		update_pos = true;
 	}
 		break;
 	case Brush::STAMP:
-		if (prev_mouse_pos_ == nullptr || mouse_pos.distance(*prev_mouse_pos_) > kStampSize) {
-			update_pos = true;
-			auto left_top = ToCv<cv::Point>(mouse_pos) - cv::Point(kStampSize / 2, kStampSize / 2);
+		if (last == kInvalidPoint || next.distance(last) > kStampSize) {
+			auto left_top = ToCv<cv::Point>(next) - cv::Point(kStampSize / 2, kStampSize / 2);
 			cv::Mat stamp_mat(kStampSize, kStampSize, CV_8UC4);
 			auto tex = picker_->current_stamp()->getTextureData();
 			// correct y-reverse and rgba -> bgra
@@ -170,16 +175,11 @@ void ModelPainter::PrepareCanvas(Polycode::Vector2 const& mouse_pos) {
 			std::vector<cv::Mat> channels;
 			cv::split(src_roi, channels);
 			src_roi.copyTo(dest_roi, channels[3]);
+			return true;
 		}
 		break;
 	}
-	if (update_pos) {
-		if (prev_mouse_pos_) {
-			*prev_mouse_pos_ = mouse_pos;
-		} else {
-			prev_mouse_pos_.reset(new Polycode::Vector2(mouse_pos));
-		}
-	}
+	return false;
 }
 
 static inline bool HasNonZero(cv::Mat const& mat) {
@@ -187,17 +187,16 @@ static inline bool HasNonZero(cv::Mat const& mat) {
 	for (int y = 0; y < mat.rows; ++y) {
 		const uchar* ptr = mat.ptr<uchar>(y);
 		for (int x = 0; x < mat.cols; ++x) {
-			bool non_zero = false;
 			for (int c = 0; c < tc; ++c) {
-				non_zero = non_zero || ptr[x * tc + c] != 0;
+				if (ptr[x * tc + c] != 0)
+					return true;
 			}
-			if (non_zero)
-				return true;
 		}
 	}
 	return false;
 }
 
+// FIXME: GPU is appropriate for this task
 static void overlay(cv::Mat& texture, cv::Mat const& new_paint) {
 	assert(texture.size() == new_paint.size());
 	assert(new_paint.channels() == 4);
@@ -215,7 +214,7 @@ static void overlay(cv::Mat& texture, cv::Mat const& new_paint) {
 	}
 }
 
-void ModelPainter::PaintTexture(Intersection const& intersection) {
+void PaintWorker::PaintTexture(Intersection const& intersection) {
 	auto mesh = intersection.scene_mesh;
 	auto raw = mesh->getMesh();
 	assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
@@ -223,21 +222,15 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 	auto height = texture->getHeight(), width = texture->getWidth();
 	auto buffer = texture->getTextureData();
 	cv::Mat tex_mat(height, width, CV_8UC4, buffer);
-	cv::Mat new_paint(height, width, CV_8UC4);
+	cv::ocl::oclMat new_paint(height, width, CV_8UC4);
 
 	auto vertex_positions = ActualVertexPositions(mesh);
-	auto renderer = Polycode::CoreServices::getInstance()->getRenderer();
-	renderer->BeginRender();
-	renderer->setPerspectiveDefaults();
-	scene_->getActiveCamera()->doCameraTransform();
-	auto camera = renderer->getCameraMatrix();
-	auto projection = renderer->getProjectionMatrix();
-	auto view = renderer->getViewport();
 
 	std::unordered_set<unsigned int> visited;
 	std::deque<unsigned int> waiting;
 	bool updated = false;
 	waiting.push_front(intersection.first_vertex_index);
+	auto renderer = Polycode::CoreServices::getInstance()->getRenderer();
 
 	while (!waiting.empty()) {
 		auto idx = waiting.front();
@@ -248,7 +241,7 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 		float left, top, right, bottom;
 		for (size_t i = 0; i < 3; i++) {
 			auto v = vertex_positions[raw->indexArray.data[idx + i]];
-			screen[i] = ToCv<cv::Point2f>(renderer->Project(camera, projection, view, v));
+			screen[i] = ToCv<cv::Point2f>(renderer->Project(camera_, projection_, view_, v));
 			if (i == 0) {
 				left = right = screen[i].x;
 				top = bottom = screen[i].y;
@@ -278,20 +271,22 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 		cv::Mat mask_roi = mask((inter - cv::Point(left, top)) & cv::Rect(cv::Point(0, 0), mask.size()));
 		cv::Mat overlap;
 		canvas_(inter).copyTo(overlap, mask_roi);
-		if (!HasNonZero(overlap))
-			continue;
 
-		cv::Point2f tex[3];
-		for (size_t i = 0; i < 3; i++) {
-			auto uv = raw->getVertexTexCoordAtIndex(idx + i);
-			tex[i] = cv::Point2f(uv.x * width, uv.y * height);
+		if (HasNonZero(overlap)) {
+			cv::ocl::oclMat g_overlap(overlap);
+			cv::Point2f tex[3];
+			for (size_t i = 0; i < 3; i++) {
+				auto uv = raw->getVertexTexCoordAtIndex(idx + i);
+				tex[i] = cv::Point2f(uv.x * width, uv.y * height);
+			}
+			auto trans = cv::getAffineTransform(zero_screen, tex);
+			cv::ocl::warpAffine(g_overlap, new_paint, trans, new_paint.size());
+			overlay(tex_mat, cv::Mat(new_paint));
+			updated = true;
 		}
-		auto trans = cv::getAffineTransform(zero_screen, tex);
-		cv::warpAffine(overlap, new_paint, trans, new_paint.size());
-		overlay(tex_mat, new_paint);
-		updated = true;
 
 		// optimize: start searcing from current index, and stop if 3 hits found
+		// FIXME: background faces are also selected (rarely occurs)
 		auto ia = raw->indexArray.data;
 		auto v1 = raw->getVertexPositionAtIndex(idx), 
 			v2 = raw->getVertexPositionAtIndex(idx + 1), 
@@ -315,46 +310,39 @@ void ModelPainter::PaintTexture(Intersection const& intersection) {
 			}
 		}
 	}
-	if (updated)
-		texture->recreateFromImageData();
+	if (updated) {
+		dirty_textures_.push_back(texture);
+	}
 }
 
-void ModelPainter::handleEvent(Polycode::Event *e) {
-	using Polycode::InputEvent;
-	auto paint = [&]() {
-		InputEvent *ie = (InputEvent*)e;
-		auto mouse_pos = ie->getMousePosition();
-		PrepareCanvas(mouse_pos);
+void PaintWorker::UpdateNextPoint(Polycode::Vector2 const& p) {
+	if (!PrepareCanvas(last_pos_, p))
+		return;
+	last_pos_ = p;
+}
 
-		auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), mouse_pos);
-		auto intersection = FindIntersectionPolygon(mesh_->getSceneMeshes(), ray);
-		if (intersection.found) {
-			PaintTexture(intersection);
-		}
-	};
-
-	auto set_click_state = [&](bool new_val) {
-		InputEvent *ie = (InputEvent*)e;
-		if (ie->mouseButton == kMouseLeftButtonCode) {
-			left_clicking_ = new_val;
-			context_->logfs << time(nullptr) << ": Paint" << (new_val ? "Start" : "End") << std::endl;
-		}
-		prev_mouse_pos_.release();
-	};
-
-	switch (e->getEventCode()) {
-	case InputEvent::EVENT_MOUSEMOVE:
-		if (left_clicking_)
-			paint();
-		break;
-	case InputEvent::EVENT_MOUSEDOWN:
-		set_click_state(true);
-		paint();
-		break;
-	case InputEvent::EVENT_MOUSEUP:
-		set_click_state(false);
-		break;
+void PaintWorker::WorkOff() {
+	auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), last_pos_);
+	auto intersection = FindIntersectionPolygon(mesh_->getSceneMeshes(), ray);
+	if (intersection.found) {
+		PaintTexture(intersection);
 	}
+	canvas_ = cv::Scalar(0, 0, 0, 0);
+}
+
+void PaintWorker::UpdateOnMain() {
+	auto renderer = Polycode::CoreServices::getInstance()->getRenderer();
+	renderer->BeginRender();
+	renderer->setPerspectiveDefaults();
+	scene_->getActiveCamera()->doCameraTransform();
+	camera_ = renderer->getCameraMatrix();
+	projection_ = renderer->getProjectionMatrix();
+	view_ = renderer->getViewport();
+	renderer->EndRender();
+	for (auto t : dirty_textures_) {
+		t->recreateFromImageData();
+	}
+	dirty_textures_.clear();
 }
 
 }

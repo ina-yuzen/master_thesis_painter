@@ -78,6 +78,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		}
 	} while(app.Update());
 
+	app.Shutdown();
 	OutputDebugString(L"Shutting down...");
 	if (hThread != NULL) {
 		context->rs_client->Quit();

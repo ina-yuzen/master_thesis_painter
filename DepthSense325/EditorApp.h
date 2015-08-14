@@ -20,6 +20,7 @@ public:
 	EditorApp(Polycode::PolycodeView *view, std::shared_ptr<Context> context);
 	~EditorApp();
 	bool Update();
+	void Shutdown();
 
 private:
 	Polycode::Core *core_;
