@@ -42,6 +42,8 @@ const std::map<Models, std::vector<std::wstring>> kManipulatableBones = ([] {
 	return map;
 })();
 
+static std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group);
+
 Polycode::ScenePrimitive* CreateHandleMarker() {
 	auto marker = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_VPLANE, 0.2, 0.2);
 	marker->setColor(0.8, 0.5, 0.5, 0.8);
@@ -68,6 +70,7 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 			b->disableAnimation = true;
 		}
 	}
+	auto centers = CalculateBoneCenters(mesh);
 	for (auto name: kManipulatableBones.at(model)) {
 		BoneHandle handle;
 		auto bone = handle.bone = skeleton->getBoneByName(name);
@@ -77,8 +80,11 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 		while (child->getNumChildBones() > 0) {
 			child = child->getChildBone(0);
 		}
-		// Get back one, because miku model's tip bones have no associated vertices.
-		handle.handle_bone_id = bone_id_map[child->getParentBone()];
+		// Get back, because some bones have no associated vertices.
+		while (centers[bone_id_map[child]] == Polycode::Vector3(0, 0, 0)) {
+			child = child->getParentBone();
+		}
+		handle.handle_bone_id = bone_id_map[child];
 		handles_.push_back(handle);
 		scene->addEntity(handle.marker);
 	}
@@ -150,7 +156,8 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 }
 
 // TODO: optimize this and ActualVertexPositions
-std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
+// calculate only for required bone ids
+static std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
 	auto skeleton = group->getSkeleton();
 	std::vector<Polycode::Vector3> bone_centers(skeleton->getNumBones(), Polycode::Vector3(0, 0, 0));
 	std::vector<double> bone_weights(skeleton->getNumBones(), 0);
@@ -163,7 +170,7 @@ std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
 			int bi = indices.data[vi];
 			double w = weights.data[vi];
 			if (w > 0.0) {
-				bone_centers[bi] = bone_centers[bi] + adjusted_points[vi / 4] * w;
+				bone_centers[bi] += adjusted_points[vi / 4] * w;
 				bone_weights[bi] += w;
 			}
 		}
