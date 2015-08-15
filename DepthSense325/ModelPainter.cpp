@@ -297,10 +297,12 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 			auto uv = raw->getVertexTexCoordAtIndex(idx + i);
 			tex[i] = cv::Point2f(uv.x * width, uv.y * height);
 		}
-		auto trans = cv::getAffineTransform(zero_screen, tex);
-		cv::ocl::warpAffine(g_overlap, new_paint, trans, new_paint.size());
-		overlay(tex_mat, cv::Mat(new_paint));
-		updated = true;
+		if (tex[0] != tex[1] && tex[1] != tex[2] && tex[0] == tex[2]) {
+			auto trans = cv::getAffineTransform(zero_screen, tex);
+			cv::ocl::warpAffine(g_overlap, new_paint, trans, new_paint.size());
+			overlay(tex_mat, cv::Mat(new_paint));
+			updated = true;
+		}
 
 		// optimize: start searcing from current index, and stop if 3 hits found
 		// FIXME: background faces are also selected (rarely occurs)
