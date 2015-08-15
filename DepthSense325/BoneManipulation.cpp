@@ -213,9 +213,10 @@ void BoneManipulation::Update() {
 	for (auto handle: handles_) {
 		handle.marker->setPosition(bone_centers[handle.handle_bone_id]);
 	}
-	if (require_xy_rotation_center_recalculation_ && current_target_) {
-		current_target_->marker->setColor(1.0, 0.5, 0.5, 0.8);
-		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), current_target_);
+	auto target = current_target_.load();
+	if (require_xy_rotation_center_recalculation_ && target) {
+		target->marker->setColor(1.0, 0.5, 0.5, 0.8);
+		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), target);
 		require_xy_rotation_center_recalculation_ = false;
 	}
 }
@@ -230,10 +231,11 @@ void BoneManipulation::OnPinchStart(cv::Point3f point) {
 		cached_points_.push_back(point);
 	}
 
-	current_target_ = SelectHandleByWindowCoord(PinchPointOnWindow(point), 10.0);
+	auto new_target = SelectHandleByWindowCoord(PinchPointOnWindow(point), 10.0);
+	current_target_.store(new_target);
 	require_xy_rotation_center_recalculation_ = true; // flag for calculating after that
-	if (current_target_ != nullptr) {
-		context_->logfs << time(nullptr) << ": PinchStart " << point.x << ", " << point.y << ", " << point.z << ": " << current_target_->handle_bone_id << std::endl;
+	if (new_target) {
+		context_->logfs << time(nullptr) << ": PinchStart " << point.x << ", " << point.y << ", " << point.z << ": " << new_target->handle_bone_id << std::endl;
 		pinch_start_sound_->Play();
 	}
 }
@@ -264,7 +266,8 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	DisplayDebugPoint(point);
 #endif
 
-	if (current_target_ == nullptr)
+	auto target = current_target_.load();
+	if (target == nullptr)
 		return;
 	cached_points_.push_back(point);
 	cached_points_.pop_front();
@@ -280,7 +283,7 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	from.Normalize(); to.Normalize();
 	auto diff = FromTwoVectors(from, to);
 	Polycode::Quaternion parents, parents_inv;
-	auto parent = current_target_->bone->getParentBone();
+	auto parent = target->bone->getParentBone();
 	while (parent) {
 		parents = parent->getRotationQuat() * parents;
 		parents_inv = parents_inv * parent->getRotationQuat().Inverse();
@@ -288,19 +291,21 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	}
 	auto mesh_rot = mesh_->getRotationQuat();
 	// FIXME: Camera rotation is adjusted to [1,0,0,0]
-	auto new_quot = parents_inv * mesh_rot.Inverse() * diff * mesh_rot * parents * current_target_->bone->getRotationQuat();
-	current_target_->bone->setRotationByQuaternion(new_quot);
+	auto new_quot = parents_inv * mesh_rot.Inverse() * diff * mesh_rot * parents * target->bone->getRotationQuat();
+	target->bone->setRotationByQuaternion(new_quot);
 	pinch_prev_ = point_new;
 	mesh_->applyBoneMotion();
 }
 
 void BoneManipulation::OnPinchEnd() {
-	if (current_target_) {
-		context_->logfs << time(nullptr) << ": PinchEnd : " << current_target_->handle_bone_id << std::endl;
-		current_target_->marker->setColor(0.8, 0.5, 0.5, 0.8);
-		current_target_ = nullptr;
-		pinch_end_sound_->Play();
-	}
+	auto target = current_target_.load();
+	if (!target)
+		return;
+
+	context_->logfs << time(nullptr) << ": PinchEnd : " << target->handle_bone_id << std::endl;
+	target->marker->setColor(0.8, 0.5, 0.5, 0.8);
+	target = nullptr;
+	pinch_end_sound_->Play();
 }
 
 BoneHandle* BoneManipulation::SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error) {

@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <memory>
 #include <queue>
 #include <vector>
@@ -36,7 +37,7 @@ private:
 	Polycode::Scene *scene_;
 	MeshGroup *mesh_;
 	std::vector<BoneHandle> handles_;
-	BoneHandle* current_target_;
+	std::atomic<BoneHandle*> current_target_; // manipulated from different thread in RealSense mode
 	Polycode::Vector2 xy_rotation_center_;
 	cv::Point3f pinch_prev_;
 	volatile bool require_xy_rotation_center_recalculation_ = false;
