@@ -15,11 +15,15 @@
 
 namespace mobamas {
 
+typedef std::vector<std::vector<int>> AdjacentList;
+
 const int kMouseLeftButtonCode = 0;
 const float kDisplayCanvasRatio = 1; // set < 1 to reduce canvas size
 const int kStampSize = 32; // on display
 const int kPenMoveThreshold = 5;
 const Polycode::Vector2 kInvalidPoint(-1, -1);
+
+static AdjacentList FindAdjacentFaces(Polycode::Mesh* mesh); 
 
 class PaintWorker {
 public:
@@ -34,6 +38,7 @@ private:
 	Polycode::Scene* scene_;
 	MeshGroup* mesh_;
 	Polycode::Vector2 last_pos_;
+	std::map<Polycode::Mesh*, AdjacentList> adjacent_faces_;
 	std::unique_ptr<PenPicker> picker_;
 	std::unique_ptr<cv::Mat> front_canvas_, back_canvas_;
 	std::atomic_bool front_dirty_;
@@ -122,6 +127,10 @@ PaintWorker::PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scen
 	back_canvas_(new cv::Mat(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4)) {
 
 	picker_.reset(new PenPicker(context));
+	for (auto mesh : mesh_->getSceneMeshes()) {
+		auto raw = mesh->getMesh();
+		adjacent_faces_[raw] = FindAdjacentFaces(raw);
+	}
 }
 
 inline bool operator ==(const Polycode::Vector2 &a, const Polycode::Vector2 &b) {
@@ -223,6 +232,12 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
 	auto buffer = texture->getTextureData();
+	AdjacentList adjacent;
+	{
+		auto it = adjacent_faces_.find(raw);	
+		assert(it != adjacent_faces_.end() && "adjacent face is not registered for this mesh");
+		adjacent = it->second;
+	}
 	cv::Mat tex_mat(height, width, CV_8UC4, buffer);
 	cv::ocl::oclMat new_paint(height, width, CV_8UC4);
 
@@ -289,27 +304,9 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 
 		// optimize: start searcing from current index, and stop if 3 hits found
 		// FIXME: background faces are also selected (rarely occurs)
-		auto ia = raw->indexArray.data;
-		auto v1 = raw->getVertexPositionAtIndex(idx), 
-			v2 = raw->getVertexPositionAtIndex(idx + 1), 
-			v3 = raw->getVertexPositionAtIndex(idx + 2);
-		for (size_t i = 0, size = raw->indexArray.getDataSize(); i < size; i += 3) {
-			auto t1 = raw->getVertexPositionAtIndex(i),
-				t2 = raw->getVertexPositionAtIndex(i + 1),
-				t3 = raw->getVertexPositionAtIndex(i + 2);
-			if (visited.find(i) == visited.end()
-				&&(v1 == t3 && v2 == t2 || v1 == t2 && v2 == t3 
-				|| v1 == t3 && v3 == t2 || v1 == t2 && v3 == t3
-				|| v3 == t3 && v2 == t2 || v3 == t2 && v2 == t3
-				|| v1 == t1 && v2 == t3 || v1 == t3 && v2 == t1 
-				|| v1 == t1 && v3 == t3 || v1 == t3 && v3 == t1
-				|| v3 == t1 && v2 == t3 || v3 == t3 && v2 == t1
-				|| v1 == t1 && v2 == t2 || v1 == t2 && v2 == t1 
-				|| v1 == t1 && v3 == t2 || v1 == t2 && v3 == t1
-				|| v3 == t1 && v2 == t2 || v3 == t2 && v2 == t1)) {
-
-				waiting.push_front(i);
-			}
+		for (auto adj : adjacent[idx / 3]) {
+			if (visited.find(adj) == visited.end())
+				waiting.push_front(adj);
 		}
 	}
 	if (updated) {
@@ -350,6 +347,34 @@ void PaintWorker::UpdateOnMain() {
 		t->recreateFromImageData();
 	}
 	dirty_textures_.clear();
+}
+
+AdjacentList FindAdjacentFaces(Polycode::Mesh* raw) {
+	size_t size = raw->indexArray.getDataSize();
+	AdjacentList list(size / 3);
+	for (size_t idx = 0; idx < size; idx += 3) {
+		auto v1 = raw->getVertexPositionAtIndex(idx),
+			v2 = raw->getVertexPositionAtIndex(idx + 1),
+			v3 = raw->getVertexPositionAtIndex(idx + 2);
+		for (size_t i = 0; i < size; i += 3) {
+			auto t1 = raw->getVertexPositionAtIndex(i),
+				t2 = raw->getVertexPositionAtIndex(i + 1),
+				t3 = raw->getVertexPositionAtIndex(i + 2);
+			if (v1 == t3 && v2 == t2 || v1 == t2 && v2 == t3
+				|| v1 == t3 && v3 == t2 || v1 == t2 && v3 == t3
+				|| v3 == t3 && v2 == t2 || v3 == t2 && v2 == t3
+				|| v1 == t1 && v2 == t3 || v1 == t3 && v2 == t1
+				|| v1 == t1 && v3 == t3 || v1 == t3 && v3 == t1
+				|| v3 == t1 && v2 == t3 || v3 == t3 && v2 == t1
+				|| v1 == t1 && v2 == t2 || v1 == t2 && v2 == t1
+				|| v1 == t1 && v3 == t2 || v1 == t2 && v3 == t1
+				|| v3 == t1 && v2 == t2 || v3 == t2 && v2 == t1) {
+
+				list[idx / 3].push_back(i);
+			}
+		}
+	}
+	return list;
 }
 
 }
