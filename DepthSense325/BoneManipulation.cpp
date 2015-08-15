@@ -276,7 +276,7 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	auto from_xy = PinchPointOnWindow(pinch_prev_) - xy_rotation_center_;
 	auto to_xy = PinchPointOnWindow(point_new) - xy_rotation_center_;
 	auto from = Polycode::Vector3(from_xy.x, - from_xy.y, 0);
-	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, (pinch_prev_.z - point_new.z) * 1);
+	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, (pinch_prev_.z - point_new.z) * - 1);
 	from.Normalize(); to.Normalize();
 	auto diff = FromTwoVectors(from, to);
 	Polycode::Quaternion parents, parents_inv;

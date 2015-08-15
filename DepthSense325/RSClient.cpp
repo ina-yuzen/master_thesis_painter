@@ -31,11 +31,16 @@ bool RSClient::Prepare() {
 	if (st != PXC_STATUS_NO_ERROR)
 		return handle_error(st);
 	// TODO: configure blob module to achieve better results
-	
+
 	st = sm_->Init();
 	if (st != PXC_STATUS_NO_ERROR)
 		return handle_error(st);
 
+	// Front facing
+	st = sm_->QueryCaptureManager()->QueryDevice()->SetMirrorMode(PXCCapture::Device::MirrorMode::MIRROR_MODE_HORIZONTAL);
+	if (st != PXC_STATUS_NO_ERROR)
+		return handle_error(st);
+	
 	return true;
 }
 
@@ -99,7 +104,7 @@ static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_de
 	auto info = depth->QueryInfo();	
 	auto size = raw_depth.total();
 
-	// TODO: remove norm generation if not used in application. This may slow the program.
+#ifdef _DEBUG
 	cv::Mat norm(raw_depth.size(), CV_8UC1);
 	uint16_t largest = 0;
 	for (size_t i = 0; i < size; i++)
@@ -115,6 +120,9 @@ static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_de
 		else normalized = 0xff - (v * 0xf0) / largest;
 		norm.at<uint8_t>(i) = normalized;
 	}
+#else
+	cv::Mat norm;
+#endif
 	return DepthMap{
 		info.width,
 		info.height,
