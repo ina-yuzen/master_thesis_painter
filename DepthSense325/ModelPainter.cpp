@@ -363,6 +363,8 @@ AdjacentList FindAdjacentFaces(Polycode::Mesh* raw) {
 			v2 = raw->getVertexPositionAtIndex(idx + 1),
 			v3 = raw->getVertexPositionAtIndex(idx + 2);
 		for (size_t i = 0; i < size; i += 3) {
+			if (i == idx)
+				continue;
 			auto t1 = raw->getVertexPositionAtIndex(i),
 				t2 = raw->getVertexPositionAtIndex(i + 1),
 				t3 = raw->getVertexPositionAtIndex(i + 2);
