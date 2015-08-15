@@ -47,7 +47,7 @@ private:
 	std::vector<Polycode::Texture*> dirty_textures_;
 
 	bool PaintCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next);
-	void PaintTexture(Intersection const& intersection);
+	void PaintTexture(Polycode::Ray const& ray, Intersection const& intersection);
 };
 
 void WorkerThreadMainLoop(std::atomic_bool* interrupted, PaintWorker* worker) {
@@ -225,7 +225,7 @@ static void overlay(cv::Mat& texture, cv::Mat const& new_paint) {
 	}
 }
 
-void PaintWorker::PaintTexture(Intersection const& intersection) {
+void PaintWorker::PaintTexture(Polycode::Ray const& ray, Intersection const& intersection) {
 	auto mesh = intersection.scene_mesh;
 	auto raw = mesh->getMesh();
 	assert(raw->getMeshType() == Polycode::Mesh::TRI_MESH);
@@ -304,10 +304,14 @@ void PaintWorker::PaintTexture(Intersection const& intersection) {
 			updated = true;
 		}
 
-		// optimize: start searcing from current index, and stop if 3 hits found
-		// FIXME: background faces are also selected (rarely occurs)
 		for (auto adj : adjacent[idx / 3]) {
-			if (visited.find(adj) == visited.end())
+			auto v = raw->indexArray.data[adj];
+			Polycode::Vector3 local_normal(
+				raw->vertexNormalArray.data[v*3],
+				raw->vertexNormalArray.data[v*3+1],
+				raw->vertexNormalArray.data[v*3+2]);
+			auto normal = mesh->getConcatenatedMatrix() * local_normal;
+			if (visited.find(adj) == visited.end() && normal.dot(ray.direction) < 0)
 				waiting.push_front(adj);
 		}
 	}
@@ -331,7 +335,7 @@ void PaintWorker::WorkOff() {
 	auto ray = scene_->projectRayFromCameraAndViewportCoordinate(scene_->getActiveCamera(), last_pos_);
 	auto intersection = FindIntersectionPolygon(mesh_->getSceneMeshes(), ray);
 	if (intersection.found) {
-		PaintTexture(intersection);
+		PaintTexture(ray, intersection);
 	}
 	*back_canvas_ = cv::Scalar(0, 0, 0, 0);
 }
