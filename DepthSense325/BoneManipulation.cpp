@@ -61,6 +61,8 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 	current_target_(nullptr)
 {
 	auto skeleton = mesh->getSkeleton();
+	if (!skeleton)
+		return;
 	std::map<Polycode::Bone*, unsigned int> bone_id_map;
 	for (unsigned int bidx = 0; bidx < skeleton->getNumBones(); bidx++)
 	{
@@ -205,6 +207,8 @@ static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::v
 	return (parent_pos + this_pos) * 0.5;
 }
 void BoneManipulation::Update() {
+	if (mesh_->getSkeleton() == nullptr)
+		return;
 	auto bone_centers = CalculateBoneCenters(mesh_);
 	for (auto handle: handles_) {
 		handle.marker->setPosition(bone_centers[handle.handle_bone_id]);

@@ -66,6 +66,8 @@ Polycode::Material* createMaterial(std::string name) {
 
 // FIXME: misbehave against models without bone weights
 void MeshGroup::applyBoneMotion() {
+	if (!skeleton_)
+		return;
 	skeleton_->Update();
 	for (auto child : children) {
 		auto mesh = static_cast<EnhSceneMesh*>(child);
@@ -124,6 +126,7 @@ private:
 	BoneAssignments bone_assignments_;
 	bool bone_assignments_cached_;
 	int mesh_index_ = -1;
+	bool has_weight_;
 	std::unordered_map<const char*, unsigned int> bone_id_cache_;
 
 	unsigned int ModelLoader::getBoneID(aiString const& name);
@@ -207,11 +210,9 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			BoneAssignment ass;
 			if (bone_assignments_cached_) {
 				ass = bone_assignments_[mesh_index_][t];
-			}
-			else {
+			} else {
 				int numAssignments = 0;
 
-				// VERRRRRRRRRY heavy, file cache is required for production use
 				for (unsigned int a = 0; a < mesh->mNumBones; a++) {
 					aiBone* bone = mesh->mBones[a];
 					unsigned int boneIndex = getBoneID(bone->mName);
@@ -231,6 +232,12 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 				bone_assignments_[mesh_index_].push_back(ass);
 			}
 
+			if (!has_weight_) {
+				for (size_t i = 0; i < 4; i++) {
+					has_weight_ = ass.weights[i] != 0;
+					break;
+				}
+			}
 			tmesh->addBoneAssignments(
 				ass.weights[0], ass.boneIds[0],
 				ass.weights[1], ass.boneIds[1],
@@ -465,9 +472,12 @@ MeshGroup* ModelLoader::loadMesh() {
 
 	// skeleton must be built first to construct bone id list
 	buildSkeleton(NULL, sc_->mRootNode);
+	has_weight_ = false;
 	loadBoneAssignmentsCache();
 	buildMesh(sc_->mRootNode);
 	saveBoneAssignmentsCache();
+	if (!has_weight_)
+		group_->setSkeleton(nullptr);
 
 	if (sc_->HasAnimations()) {
 		std::cerr << "Animation is not yet supported." << std::endl;
