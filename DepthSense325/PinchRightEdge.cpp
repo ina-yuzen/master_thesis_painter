@@ -61,13 +61,17 @@ Option<cv::Point3f> PinchRightEdge(std::shared_ptr<Context> context, const Depth
 					if (right_most_point.x < pt.x && pt.y >= min_y && pt.y <= max_y) {
 						right_most_point.x = pt.x;
 						right_most_point.y = pt.y;
-						right_most_point.z = data.raw_mat.at<uint16_t>(pt.y, pt.x);
+						right_most_point.z = 0;
+						// 現在の実装は指のある位置から右に外れた点を選択することがある
+						for (int x = pt.x; x >= 0 && right_most_point.z == 0; --x) {
+							right_most_point.z = data.raw_mat.at<uint16_t>(pt.y, x);
+						}
 					}
 				}
 				found.Reset(cv::Point3f(
 					right_most_point.x / static_cast<float>(data.w),
 					right_most_point.y / static_cast<float>(data.h),
-					right_most_point.z)); // TOOD: estimate depth from depthmap
+					right_most_point.z));
 			}
 		}
 		cSeq = cSeq->h_next;
