@@ -299,7 +299,8 @@ void PaintWorker::PaintTexture(Polycode::Ray const& ray, Intersection const& int
 			auto uv = raw->getVertexTexCoordAtIndex(idx + i);
 			tex[i] = cv::Point2f(uv.x * width, uv.y * height);
 		}
-		if (tex[0] != tex[1] && tex[1] != tex[2] && tex[0] != tex[2]) {
+		auto v = tex[1] - tex[0];
+		if (std::abs(cv::Point2f(v.y, -v.x).dot(tex[2] - tex[0])) > 1e-6) {
 			auto trans = cv::getAffineTransform(zero_screen, tex);
 			cv::ocl::warpAffine(g_overlap, new_paint, trans, new_paint.size());
 			overlay(tex_mat, cv::Mat(new_paint));
