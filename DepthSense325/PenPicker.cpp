@@ -138,9 +138,11 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 
 void PenPicker::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
+	auto ie = static_cast<InputEvent*>(e);
 	switch (e->getEventCode()) {
 	case InputEvent::EVENT_MOUSEDOWN: 
-		PickClicked(((InputEvent*)e)->getMousePosition());
+		if (ie->getMouseButton() == Polycode::CoreInput::MOUSE_BUTTON1)
+			PickClicked(((InputEvent*)e)->getMousePosition());
 		break;
 	case InputEvent::EVENT_MOUSEMOVE:
 		auto point = ((InputEvent*)e)->getMousePosition();

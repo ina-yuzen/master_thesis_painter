@@ -97,7 +97,9 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		break;
 	case InputEvent::EVENT_MOUSEDOWN:
 		set_click_state(true);
-		worker_->UpdateNextPoint(ie->getMousePosition());
+		if (left_clicking_) {
+			worker_->UpdateNextPoint(ie->getMousePosition());
+		}
 		break;
 	case InputEvent::EVENT_MOUSEUP:
 		set_click_state(false);
