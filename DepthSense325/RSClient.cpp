@@ -148,7 +148,7 @@ void RSClient::Run() {
 
 	std::vector<uint16_t> min_values;
 	min_values.reserve(kCalibrationFrames);
-	uint16_t min_depth_threshold = 400; // good default value for front facing setting
+	uint16_t min_depth_threshold = 350; // good default value for front facing setting
 	int iter_count = 0;
 
 	while (!should_quit_ && sm_ != nullptr && (error = sm_->AcquireFrame(true)) >= PXC_STATUS_NO_ERROR) {
