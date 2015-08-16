@@ -4,6 +4,7 @@
 #include "DepthMap.h"
 #include "EditorApp.h"
 #include "Models.h"
+#include "PenAsMouse.h"
 #include "Recorder.h"
 #include "RSClient.h"
 
@@ -49,6 +50,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	context->logfs << tm << ": Start with model " << model << std::endl;
 
 	auto view = new Polycode::PolycodeView(hInstance, nCmdShow, L"MOBAM@S");
+	mobamas::hWnd = view->hwnd;
 	mobamas::EditorApp app(view, context);
 
 	DWORD threadId;
