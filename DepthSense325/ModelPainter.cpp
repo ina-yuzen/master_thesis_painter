@@ -28,7 +28,7 @@ static AdjacentList FindAdjacentFaces(Polycode::Mesh* mesh);
 
 class PaintWorker {
 public:
-	PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh);
+	PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, PenPicker* picker);
 	void UpdateNextPoint(Polycode::Vector2 const& p);
 	void FinishPainting() { last_pos_ = kInvalidPoint; }
 	void WorkOff();
@@ -65,10 +65,10 @@ void WorkerThreadMainLoop(std::atomic_bool* interrupted, PaintWorker* worker) {
 	}
 }
 
-ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh) :
+ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, PenPicker* picker) :
     EventHandler(),
     context_(context),
-    worker_(new PaintWorker(context, scene, mesh)),
+    worker_(new PaintWorker(context, scene, mesh, picker)),
 	inturrupted_(),
 	left_clicking_(false) {
 
@@ -118,15 +118,15 @@ void ModelPainter::Shutdown() {
 	worker_thread_.join();
 }
 
-PaintWorker::PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh) : 
+PaintWorker::PaintWorker(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, PenPicker* picker) : 
 	context_(context),
 	scene_(scene),
 	mesh_(mesh),
 	last_pos_(kInvalidPoint),
+	picker_(picker),
 	front_canvas_(new cv::Mat(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4)),
 	back_canvas_(new cv::Mat(kWinHeight * kDisplayCanvasRatio, kWinWidth * kDisplayCanvasRatio, CV_8UC4)) {
 
-	picker_.reset(new PenPicker(context));
 	for (auto mesh : mesh_->getSceneMeshes()) {
 		auto raw = mesh->getMesh();
 		adjacent_faces_[raw] = FindAdjacentFaces(raw);

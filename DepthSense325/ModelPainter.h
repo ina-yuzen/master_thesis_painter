@@ -17,7 +17,7 @@ class PaintWorker;
 
 class ModelPainter : public Polycode::EventHandler {
 public:
-	ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh);
+	ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, PenPicker* picker);
 	void handleEvent(Polycode::Event *e) override;
 	void Update();
 	void Shutdown();

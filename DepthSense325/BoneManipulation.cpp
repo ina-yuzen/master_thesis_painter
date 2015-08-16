@@ -304,7 +304,7 @@ void BoneManipulation::OnPinchEnd() {
 
 	context_->logfs << time(nullptr) << ": PinchEnd : " << target->handle_bone_id << std::endl;
 	target->marker->setColor(0.8, 0.5, 0.5, 0.8);
-	target = nullptr;
+	current_target_.store(nullptr);
 	pinch_end_sound_->Play();
 }
 

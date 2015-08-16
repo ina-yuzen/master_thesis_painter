@@ -7,6 +7,7 @@
 #include "ModelRotation.h"
 #include "ModelPainter.h"
 #include "Import.h"
+#include "PenPicker.h"
 
 namespace mobamas {
 
@@ -85,8 +86,9 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
 	if (context->operation_mode == OperationMode::MidAirMode) {
 		hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
 	}
+	auto picker = new PenPicker(context); // adjust event handler order
 	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
-	painter_.reset(new ModelPainter(context, scene, mesh_));
+	painter_.reset(new ModelPainter(context, scene, mesh_, picker));
 	rotation_.reset(new ModelRotation(context, mesh_));
 
 	context->pinch_listeners = bone_manipulation_;
