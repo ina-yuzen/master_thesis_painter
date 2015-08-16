@@ -11,6 +11,7 @@ namespace mobamas {
 struct Context;
 struct Intersection;
 class MeshGroup;
+class PenAsMouse;
 class PenPicker;
 class PaintWorker;
 
@@ -24,6 +25,7 @@ public:
 private:
 	std::shared_ptr<Context> context_;
 	std::unique_ptr<PaintWorker> worker_;
+	std::unique_ptr<PenAsMouse> delegator_;
 	std::thread worker_thread_;
 	std::atomic_bool inturrupted_;
 	bool left_clicking_;

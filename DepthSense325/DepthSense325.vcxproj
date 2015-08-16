@@ -17,6 +17,7 @@
     <ClCompile Include="Import.cpp" />
     <ClCompile Include="Intersection.cpp" />
     <ClCompile Include="ModelRotation.cpp" />
+    <ClCompile Include="PenAsMouse.cpp" />
     <ClCompile Include="PenPicker.cpp" />
     <ClCompile Include="ConsoleDemo.cxx" />
     <ClCompile Include="ModelPainter.cpp" />
@@ -38,6 +39,7 @@
     <ClInclude Include="Intersection.h" />
     <ClInclude Include="Models.h" />
     <ClInclude Include="Option.h" />
+    <ClInclude Include="PenAsMouse.h" />
     <ClInclude Include="PinchTracker.h" />
     <ClInclude Include="RSClient.h" />
     <ClInclude Include="Util.h" />

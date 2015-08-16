@@ -10,6 +10,7 @@
 #include "EditorApp.h"
 #include "Import.h"
 #include "Intersection.h"
+#include "PenAsMouse.h"
 #include "PenPicker.h"
 #include "Util.h"
 
@@ -74,11 +75,7 @@ ModelPainter::ModelPainter(std::shared_ptr<Context> context, Polycode::Scene *sc
 	inturrupted_.store(false);
 	worker_thread_ = std::move(std::thread(WorkerThreadMainLoop, &inturrupted_, worker_.get()));
 
-	auto input = Polycode::CoreServices::getInstance()->getInput();
-	using Polycode::InputEvent;
-	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+	delegator_.reset(new PenAsMouse(this));
 }
 
 void ModelPainter::handleEvent(Polycode::Event *e) {
@@ -107,6 +104,9 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 		worker_->FinishPainting();
 		break;
 	}
+	// Stop only pen events
+	if (context_->operation_mode != OperationMode::MouseMode)
+		e->cancelEvent();
 }
 
 void ModelPainter::Update() {

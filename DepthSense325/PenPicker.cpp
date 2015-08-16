@@ -4,6 +4,7 @@
 
 #include "Context.h"
 #include "EditorApp.h"
+#include "PenAsMouse.h"
 
 namespace mobamas {
 
@@ -80,9 +81,7 @@ PenPicker::PenPicker(std::shared_ptr<Context> context):
 	cursor_.reset(new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 10, 10, 10));
 	scene_->addChild(cursor_.get());
 	
-	auto input = CoreServices::getInstance()->getInput();
-	input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
-	input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+	new PenAsMouse(this);
 }
 
 bool IsClicking(const Polycode::Vector2& point, const Polycode::SceneEntity* obj) {
