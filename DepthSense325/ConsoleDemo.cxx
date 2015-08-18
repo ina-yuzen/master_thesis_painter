@@ -33,9 +33,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 #endif
 
-	mobamas::Models model = mobamas::Models::ROBOT;
-	//if (strcmp(lpCmdLine, "miku") == 0)
-		model = mobamas::Models::TREASURE;
+	mobamas::Models model = mobamas::Models::TREASURE;
 
 	auto context = std::make_shared<mobamas::Context>();
 	auto client = std::make_shared<mobamas::RSClient>(context);

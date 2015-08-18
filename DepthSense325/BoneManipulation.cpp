@@ -1,8 +1,8 @@
 #include "BoneManipulation.h"
 
+#include <ctime>
 #include <functional>
 #include <string>
-#include <ctime>
 #include <vector>
 
 #include "Context.h"
@@ -192,6 +192,7 @@ static std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
 	return bone_centers;
 }
 
+// 宝箱を正面から開けるときの挙動がイマイチ
 static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::vector<Polycode::Vector3> const& centers, BoneHandle const* current_target) {
 	assert(current_target->bone->parentBoneId >= 0);
 
@@ -295,8 +296,13 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 		parent = parent->getParentBone();
 	}
 	auto mesh_rot = mesh_->getRotationQuat();
-	// FIXME: Camera rotation is adjusted to [1,0,0,0]
 	auto new_quot = parents_inv * mesh_rot.Inverse() * diff * mesh_rot * parents * target->bone->getRotationQuat();
+	if (context_->model == Models::TREASURE) {
+		// Bind rotation axis to Z, and limit angles
+		new_quot.fromAngleAxis(
+			std::min(1. / 3. * PI, std::max(- PI / 2., new_quot.toEulerAngles().z)),
+			Polycode::Vector3(0, 0, 1));
+	}
 	target->bone->setRotationByQuaternion(new_quot);
 	pinch_prev_ = point_new;
 	mesh_->applyBoneMotion();
