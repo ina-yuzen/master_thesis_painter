@@ -41,6 +41,12 @@ MeshGroup* LoadMesh2(Models model) {
 		group->Scale(15);
 		return group;
 	}
+	case Models::TREASURE:
+	{
+		auto group = importCollada("Resources/treasure.dae");
+		//group->Scale(1);
+		return group;
+	}
 	default:
 		std::cout << "Unknown model" << std::endl;
 		assert(false);

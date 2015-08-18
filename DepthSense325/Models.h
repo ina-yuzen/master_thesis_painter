@@ -4,7 +4,8 @@ namespace mobamas {
 
 enum Models {
 	ROBOT,
-	MIKU
+	MIKU,
+	TREASURE
 };
 
 }
