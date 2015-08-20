@@ -3,6 +3,8 @@
 #include <ctime>
 #include <cstdio>
 #include <chrono>
+#include <codecvt>
+#include <locale>
 
 #include "Recorder.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -97,15 +99,19 @@ void Writer::WriteTexture(Polycode::Texture* texture) {
 	}
 }
 
+const std::locale utf8_locale = std::locale(std::locale(), new std::codecvt_utf8<wchar_t>());
+
 void Writer::WritePose(Polycode::Skeleton* skeleton) {
-	std::wofstream w(dirname_ + L"/pose.dat", std::ios::out | std::ios::binary);
+	if (!skeleton)
+		return;
+	std::wofstream w(dirname_ + L"/pose.txt", std::ios::out);
+	w.imbue(utf8_locale);
 	for (size_t i = 0, length = skeleton->getNumBones(); i < length; i++) {
-		auto b = skeleton->getBone(i);
-		auto rot = b->getRotationQuat();
-		w.write((wchar_t*)&rot.x, sizeof(Number));
-		w.write((wchar_t*)&rot.y, sizeof(Number));
-		w.write((wchar_t*)&rot.z, sizeof(Number));
-		w.write((wchar_t*)&rot.w, sizeof(Number));
+		auto bone = skeleton->getBone(i);
+		auto rot = bone->getRotationQuat();
+		std::wstring name;
+		utf8toWStr(name, bone->getName().contents);
+		w << name << "\t" << rot.w << " " << rot.x << " " << rot.y << " " << rot.z << std::endl;
 	}
 	w.close();
 }
