@@ -25,10 +25,12 @@ public:
 private:
 	Polycode::Core *core_;
 	MeshGroup* mesh_;
+	std::shared_ptr<Context> context_;
 	std::shared_ptr<BoneManipulation> bone_manipulation_;
 	std::unique_ptr<HandVisualization> hand_visualization_;
 	std::unique_ptr<ModelRotation> rotation_;
 	std::unique_ptr<ModelPainter> painter_;
+	unsigned int last_save_tick_ = 0;
 };
 
 }

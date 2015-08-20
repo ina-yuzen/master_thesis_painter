@@ -1,10 +1,10 @@
 #include "ModelRotation.h"
 
-#include <ctime>
 #include <PolyWinCore.h>
 #include <iostream>
 
 #include "Context.h"
+#include "Writer.h"
 
 namespace mobamas {
 
@@ -78,16 +78,16 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 				moving_ = true;
 				mouse_prev_ = touches[0].position;
 				operation_ = Operation::ROTATE;
-				context_->logfs << time(nullptr) << ": RotationStart" << std::endl;
+				context_->writer->log() << "RotationStart" << std::endl;
 				break;
 			case 2:
 				moving_ = true;
 				distance_prev_ = touches[0].position.distance(touches[1].position);
 				operation_ = Operation::SCALE;
-				context_->logfs << time(nullptr) << ": ScaleStart" << std::endl;
+				context_->writer->log() << "ScaleStart" << std::endl;
 				break;
 			default:
-				context_->logfs << time(nullptr) << ": " << (operation_ == Operation::ROTATE ? "Rotation" : "Scale") << "Start" << std::endl;
+				context_->writer->log() << (operation_ == Operation::ROTATE ? "Rotation" : "Scale") << "Start" << std::endl;
 				moving_ = false;
 				break;
 			}

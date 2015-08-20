@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <mutex>
 #include <unordered_set>
 #include <opencv2\opencv.hpp>
 #include <opencv2\ocl\ocl.hpp>
@@ -13,6 +14,7 @@
 #include "PenAsMouse.h"
 #include "PenPicker.h"
 #include "Util.h"
+#include "Writer.h"
 
 namespace mobamas {
 
@@ -45,6 +47,7 @@ private:
 	std::atomic_bool front_dirty_;
 	Polycode::Matrix4 camera_, projection_;
 	Polycode::Rectangle view_;
+	std::mutex m_dirty_textures_;
 	std::vector<Polycode::Texture*> dirty_textures_;
 
 	bool PaintCanvas(Polycode::Vector2 const& last, Polycode::Vector2 const& next);
@@ -85,7 +88,7 @@ void ModelPainter::handleEvent(Polycode::Event *e) {
 	auto set_click_state = [&](bool new_val) {
 		if (ie->mouseButton == kMouseLeftButtonCode) {
 			left_clicking_ = new_val;
-			context_->logfs << time(nullptr) << ": Paint" << (new_val ? "Start" : "End") << std::endl;
+			context_->writer->log() << "Paint" << (new_val ? "Start" : "End") << std::endl;
 		}
 	};
 
@@ -234,14 +237,14 @@ void PaintWorker::PaintTexture(Polycode::Ray const& ray, Intersection const& int
 	auto texture = mesh->getTexture();
 	auto height = texture->getHeight(), width = texture->getWidth();
 	auto buffer = texture->getTextureData();
+	cv::Mat tex_mat(height, width, CV_8UC4, buffer);
+	cv::ocl::oclMat new_paint(height, width, CV_8UC4);
 	AdjacentList adjacent;
 	{
 		auto it = adjacent_faces_.find(raw);	
 		assert(it != adjacent_faces_.end() && "adjacent face is not registered for this mesh");
 		adjacent = it->second;
 	}
-	cv::Mat tex_mat(height, width, CV_8UC4, buffer);
-	cv::ocl::oclMat new_paint(height, width, CV_8UC4);
 
 	auto vertex_positions = ActualVertexPositions(mesh);
 
@@ -319,6 +322,7 @@ void PaintWorker::PaintTexture(Polycode::Ray const& ray, Intersection const& int
 		}
 	}
 	if (updated) {
+		std::lock_guard<std::mutex> lock(m_dirty_textures_);
 		dirty_textures_.push_back(texture);
 	}
 }
@@ -352,10 +356,13 @@ void PaintWorker::UpdateOnMain() {
 	projection_ = renderer->getProjectionMatrix();
 	view_ = renderer->getViewport();
 	renderer->EndRender();
-	for (auto t : dirty_textures_) {
-		t->recreateFromImageData();
+	{
+		std::lock_guard<std::mutex> lock(m_dirty_textures_);
+		for (auto t : dirty_textures_) {
+			t->recreateFromImageData();
+		}
+		dirty_textures_.clear();
 	}
-	dirty_textures_.clear();
 }
 
 AdjacentList FindAdjacentFaces(Polycode::Mesh* raw) {

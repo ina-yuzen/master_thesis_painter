@@ -7,6 +7,7 @@
 #include "PenAsMouse.h"
 #include "Recorder.h"
 #include "RSClient.h"
+#include "Writer.h"
 
 #ifndef NDEBUG
 #include "OutputDebugStringBuf.h"
@@ -33,19 +34,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
 #endif
 
-	mobamas::Models model = mobamas::Models::TREASURE;
-
 	auto context = std::make_shared<mobamas::Context>();
-	auto client = std::make_shared<mobamas::RSClient>(context);
-	context->model = model;
+	context->model = mobamas::Models::MIKU;
 	context->operation_mode = mobamas::OperationMode::MouseMode;
+	auto client = std::make_shared<mobamas::RSClient>(context);
 	context->rs_client = client;
-	context->recorder = std::unique_ptr<mobamas::Recorder>(new mobamas::Recorder());
+	context->writer = std::unique_ptr<mobamas::Writer>(new mobamas::Writer(context->model, context->operation_mode));
 
-	time_t tm;
-	time(&tm);
-	context->logfs.open("logs\\" + std::to_string(tm) + ".log", std::ios::out | std::ios::trunc);
-	context->logfs << tm << ": Start with model " << model << std::endl;
+	context->writer->log() << "Start with model " << context->model << " operation mode " << context->operation_mode << std::endl;
 
 	auto view = new Polycode::PolycodeView(hInstance, nCmdShow, L"MOBAM@S");
 	mobamas::hWnd = view->hwnd;
@@ -96,8 +92,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			break;
 		}
 	}
-	time(&tm);
-	context->logfs << time(nullptr) << ": End" << std::endl;
-	context->logfs.close();
+	context->writer->log() << "End" << std::endl;
 	return Msg.wParam;
 }

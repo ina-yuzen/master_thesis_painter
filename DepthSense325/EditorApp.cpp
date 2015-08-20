@@ -8,6 +8,7 @@
 #include "ModelPainter.h"
 #include "Import.h"
 #include "PenPicker.h"
+#include "Writer.h"
 
 namespace mobamas {
 
@@ -54,9 +55,7 @@ MeshGroup* LoadMesh2(Models model) {
 	}
 }
 
-
-
-EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) {
+EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) : context_(context) {
 	core_ = new POLYCODE_CORE(view, kWinWidth, kWinHeight, false, true, 0, 0, 90);
 
 	core_->enableMouse(false);
@@ -107,11 +106,20 @@ EditorApp::~EditorApp() {
 		delete core_;
 }
 
+const unsigned int kAutoSaveDuration = 5000; // ms
 bool EditorApp::Update() {
 	bone_manipulation_->Update();
 	if (hand_visualization_)
 		hand_visualization_->Update();
 	painter_->Update();
+	auto tick = core_->getTicks();
+	if (tick - last_save_tick_ > kAutoSaveDuration) {
+		last_save_tick_ = tick;
+		context_->writer->WritePose(mesh_->getSkeleton());
+		for (auto sm : mesh_->getSceneMeshes()) {
+			context_->writer->WriteTexture(sm->getTexture());
+		}
+	}
 	return core_->updateAndRender();
 }
 

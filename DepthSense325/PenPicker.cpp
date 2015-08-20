@@ -1,10 +1,9 @@
 #include "PenPicker.h"
 
-#include <ctime>
-
 #include "Context.h"
 #include "EditorApp.h"
 #include "PenAsMouse.h"
+#include "Writer.h"
 
 namespace mobamas {
 
@@ -110,7 +109,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 		if (IsClicking(point, color_pick)) {
 			current_brush_ = Brush::PEN;
 			current_color_ = color_pick->color;
-			context_->logfs << time(nullptr) << ": PenColorChanged " << current_color_.r << ", " << current_color_.g << ", " << current_color_.b << std::endl;
+			context_->writer->log() << "PenColorChanged " << current_color_.r << ", " << current_color_.g << ", " << current_color_.b << std::endl;
 			UpdateCursorStyle();
 			break;
 		}
@@ -120,7 +119,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 			current_brush_ = Brush::PEN;
 			auto size = size_pick->getPrimitiveParameter1();
 			current_size_ = (int)(size / 5) - 1;
-			context_->logfs << time(nullptr) << ": PenSizeChanged " << current_size_ << std::endl;
+			context_->writer->log() << "PenSizeChanged " << current_size_ << std::endl;
 			UpdateCursorStyle();
 			break;
 		}
@@ -129,7 +128,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 		if (IsClicking(point, pick)) {
 			current_brush_ = Brush::STAMP;
 			current_stamp_ = pick->getTexture();
-			context_->logfs << time(nullptr) << ": StampPicked" << std::endl;
+			context_->writer->log() << "StampPicked" << std::endl;
 			UpdateCursorStyle();
 			break;
 		}

@@ -1,6 +1,5 @@
 #include "BoneManipulation.h"
 
-#include <ctime>
 #include <functional>
 #include <string>
 #include <vector>
@@ -9,6 +8,7 @@
 #include "EditorApp.h"
 #include "Import.h"
 #include "Util.h"
+#include "Writer.h"
 
 namespace mobamas {
 
@@ -241,7 +241,7 @@ void BoneManipulation::OnPinchStart(cv::Point3f point) {
 	current_target_.store(new_target);
 	require_xy_rotation_center_recalculation_ = true; // flag for calculating after that
 	if (new_target) {
-		context_->logfs << time(nullptr) << ": PinchStart " << point.x << ", " << point.y << ", " << point.z << ": " << new_target->handle_bone_id << std::endl;
+		context_->writer->log() << "PinchStart " << point.x << ", " << point.y << ", " << point.z << ": " << new_target->handle_bone_id << std::endl;
 		pinch_start_sound_->Play();
 	}
 }
@@ -313,7 +313,7 @@ void BoneManipulation::OnPinchEnd() {
 	if (!target)
 		return;
 
-	context_->logfs << time(nullptr) << ": PinchEnd : " << target->handle_bone_id << std::endl;
+	context_->writer->log() << "PinchEnd : " << target->handle_bone_id << std::endl;
 	target->marker->setColor(0.8, 0.5, 0.5, 0.8);
 	current_target_.store(nullptr);
 	pinch_end_sound_->Play();

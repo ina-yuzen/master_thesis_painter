@@ -28,6 +28,7 @@
     <ClCompile Include="EditorApp.cpp" />
     <ClCompile Include="RSClient.cpp" />
     <ClCompile Include="Util.cpp" />
+    <ClCompile Include="Writer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BackgroundImage.h" />
@@ -42,6 +43,7 @@
     <ClInclude Include="PenAsMouse.h" />
     <ClInclude Include="PinchTracker.h" />
     <ClInclude Include="RSClient.h" />
+    <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="ModelRotation.h" />
     <ClInclude Include="Context.h" />
@@ -51,6 +53,7 @@
     <ClInclude Include="ModelPainter.h" />
     <ClInclude Include="OutputDebugStringBuf.h" />
     <ClInclude Include="Recorder.h" />
+    <ClInclude Include="Writer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
