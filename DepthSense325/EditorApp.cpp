@@ -115,10 +115,13 @@ bool EditorApp::Update() {
 	auto tick = core_->getTicks();
 	if (tick - last_save_tick_ > kAutoSaveDuration) {
 		last_save_tick_ = tick;
-		context_->writer->WritePose(mesh_->getSkeleton());
-		for (auto sm : mesh_->getSceneMeshes()) {
-			context_->writer->WriteTexture(sm->getTexture());
-		}
+		std::thread t([this]() {
+			context_->writer->WritePose(mesh_->getSkeleton());
+			for (auto sm : mesh_->getSceneMeshes()) {
+				context_->writer->WriteTexture(sm->getTexture());
+			}
+		});
+		t.detach();
 	}
 	return core_->updateAndRender();
 }
