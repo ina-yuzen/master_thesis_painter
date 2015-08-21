@@ -48,7 +48,6 @@ namespace RecConv
             foreach (XmlNode node in dae.SelectNodes("//c:node", manager)) 
             {
                 String name = node.Attributes.GetNamedItem("name").InnerText;
-                Console.WriteLine(name);
                 Matrix m;
                 if (pose.TryGetValue(name, out m))
                 {
@@ -68,9 +67,7 @@ namespace RecConv
             }
             foreach (XmlNode imageFile in dae.SelectNodes("//c:library_images/c:image/c:init_from", manager))
             {
-                Console.WriteLine(imageFile.InnerXml);
                 imageFile.InnerText = System.IO.Path.GetFileName(imageFile.InnerText);
-                Console.WriteLine(imageFile.InnerText);
             }
             string outputName = dirname + "\\" + System.IO.Path.GetFileName(args[0]);
             dae.Save(outputName);
@@ -86,7 +83,6 @@ namespace RecConv
 
         public override string ToString()
         {
-            Console.WriteLine(a.Length);
             return String.Format("{0} {4} {8} {12}\r\n{1} {5} {9} {13}\r\n{2} {6} {10} {14}\r\n{3} {7} {11} {15}", 
                 Array.ConvertAll(a, i=> (object) i));
         }
