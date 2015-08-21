@@ -108,10 +108,15 @@ void Writer::WritePose(Polycode::Skeleton* skeleton) {
 	w.imbue(utf8_locale);
 	for (size_t i = 0, length = skeleton->getNumBones(); i < length; i++) {
 		auto bone = skeleton->getBone(i);
-		auto rot = bone->getRotationQuat();
+		auto mat = bone->getTransformMatrix();
 		std::wstring name;
 		utf8toWStr(name, bone->getName().contents);
-		w << name << "\t" << rot.w << " " << rot.x << " " << rot.y << " " << rot.z << std::endl;
+		w << name;
+		for (size_t i = 0; i < 16; i++) {
+			w << " " << mat.ml[i];
+		}
+		w << std::endl;
+
 	}
 	w.close();
 }
