@@ -193,7 +193,7 @@ static std::vector<Polycode::Vector3> CalculateBoneCenters(MeshGroup* group) {
 }
 
 // 宝箱を正面から開けるときの挙動がイマイチ
-static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::vector<Polycode::Vector3> const& centers, BoneHandle const* current_target) {
+static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::vector<Polycode::Vector3> const& centers, BoneHandle const* current_target, Polycode::Vector2 pinch_offset) {
 	assert(current_target->bone->parentBoneId >= 0);
 
 	// Prepare rendering environment
@@ -210,7 +210,8 @@ static Polycode::Vector2 EstimateXyRotationCenter(Polycode::Scene* scene, std::v
 
 	renderer->EndRender();
 
-	return (parent_pos + this_pos) * 0.5;
+	auto offset = this_pos - pinch_offset;
+	return (parent_pos + this_pos) * 0.5 - offset;
 }
 void BoneManipulation::Update() {
 	if (mesh_->getSkeleton() == nullptr)
@@ -222,7 +223,7 @@ void BoneManipulation::Update() {
 	auto target = current_target_.load();
 	if (require_xy_rotation_center_recalculation_ && target) {
 		target->marker->setColor(1.0, 0.5, 0.5, 0.8);
-		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), target);
+		xy_rotation_center_ = EstimateXyRotationCenter(scene_, CalculateBoneCenters(mesh_), target, pinch_offset);
 		require_xy_rotation_center_recalculation_ = false;
 	}
 }
@@ -276,7 +277,12 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	if (target == nullptr)
 		return;
 	cached_points_.push_back(point);
+	if ((int)cached_points_.size() < 6) {
+		std::cout << "ret" << std::endl;
+		return;
+	}
 	cached_points_.pop_front();
+
 	cv::Point3f point_new;
 	for (const auto point : cached_points_) {
 		point_new += point;
@@ -332,6 +338,7 @@ BoneHandle* BoneManipulation::SelectHandleByWindowCoord(Polycode::Vector2 point,
 			selected = &handle;
 		}
 	}
+	pinch_offset = point;
 	return selected;
 }
 
