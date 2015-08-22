@@ -13,12 +13,17 @@ class PinchTracker {
 public:
 	explicit PinchTracker(std::shared_ptr<Context> context) :
 		context_(context), 
-		prev_(Option<cv::Point3f>::None()) {}
+		prev_(std::deque<Option<cv::Point3f>>()),
+		pinching_(false) {}
 	void NotifyNewData(DepthMap const& depth_map, Option<cv::Point3f> const& data);
 
 private:
 	std::shared_ptr<Context> context_;
-	Option<cv::Point3f> prev_;
+	std::deque<Option<cv::Point3f>> prev_;
+	bool pinching_;
+	Option<cv::Point3f> Pop();
+	void Push(Option<cv::Point3f> point);
+	Option<cv::Point3f> PopDense();
 };
 
 }
