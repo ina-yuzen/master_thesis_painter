@@ -7,7 +7,7 @@
 
 namespace mobamas {
 
-const double kMinHoleSize = 300.0;
+const double kMinHoleSize = 400.0;
 
 static bool HasHandHole(CvSeq *parent) {
 	auto hole = parent->v_next;
