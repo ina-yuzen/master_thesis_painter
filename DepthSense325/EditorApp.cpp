@@ -88,7 +88,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) : con
 	cam->setPosition(0, 0, 5);
 	cam->lookAt(Polycode::Vector3(0, 0, 0));
 
-	if (context->operation_mode == OperationMode::MidAirMode) {
+	if (context->operation_mode == OperationMode::MidAirMode || context->operation_mode == OperationMode::FrontMode) {
 		hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
 	}
 	auto picker = new PenPicker(context); // adjust event handler order

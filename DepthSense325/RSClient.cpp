@@ -88,6 +88,37 @@ static cv::Mat ConvertDepthImage(PXCCapture::Sample* sample) {
 	return mat;
 }
 
+const float kX = 4.0E-3, kY = 4.0E-3, kYOffset = 0.25;
+const uint16_t kZFar = 1200;
+static void ReplaceFrontalOrigin(cv::Mat& raw_depth, cv::Mat& seg_mask, uint16_t saturated) {
+	assert(!raw_depth.empty());
+	assert(raw_depth.size() == seg_mask.size());
+	cv::Mat new_depth(raw_depth.rows, raw_depth.cols, raw_depth.type());
+	cv::Mat new_mask(seg_mask.rows, seg_mask.cols, seg_mask.type());
+	new_depth = saturated;
+	new_mask = 0;
+	int cx = raw_depth.cols / 2, cy = raw_depth.rows / 2;
+	for (size_t y = 0; y < raw_depth.rows - 1; y++) {
+		for (size_t x = 0; x < raw_depth.cols - 1; x++) {
+			auto z = raw_depth.at<uint16_t>(y, x);
+			if (z == saturated)
+				continue;
+			cv::Point ps(cx + kX * (static_cast<int>(x) - cx) * z, cy + kY * (static_cast<int>(y) - cy) * z - kYOffset * raw_depth.rows);
+			cv::Point pe(cx + kX * (static_cast<int>(x)+1 - cx) * z, cy + kY * (static_cast<int>(y)+1 - cy) * z - kYOffset * raw_depth.rows);
+			if (pe.x < 0 || ps.x >= new_depth.cols || pe.y < 0 || ps.y >= new_depth.rows)
+				continue;
+			for (size_t ix = std::max(0, ps.x); ix <= std::min(pe.x, new_depth.cols - 1); ++ix) {
+				for (size_t iy = std::max(0, ps.y); iy <= std::min(pe.y, new_depth.rows - 1); ++iy) {
+					new_depth.at<uint16_t>(iy, ix) = std::max(kZFar - z, 0);
+					new_mask.at<uint8_t>(iy, ix) = seg_mask.at<uint8_t>(y, x);
+				}
+			}
+		}
+	}
+	raw_depth = new_depth;
+	seg_mask = new_mask;
+}
+
 static uint16_t GetMinimumApplicableValue(cv::Mat depth) {
 	assert(!depth.empty());
 	uint16_t min = 0xffff;
@@ -163,6 +194,9 @@ void RSClient::Run() {
 		if (seg_mask.empty()) {
 			seg_mask = cv::Mat(raw_depth.size(), CV_8UC1, cv::Scalar(0));
 		}
+		if (context_->operation_mode == OperationMode::FrontMode) {
+			ReplaceFrontalOrigin(raw_depth, seg_mask, saturated);
+		}
 
 		cv::Mat new_depth;
 		raw_depth.copyTo(new_depth, seg_mask);
@@ -178,7 +212,7 @@ void RSClient::Run() {
 			std::cout << min_depth << std::endl;
 		}
 		else {
-			if (min_depth_threshold < min_depth + 10) {
+			if (context_->operation_mode != OperationMode::FrontMode && min_depth_threshold < min_depth + 10) {
 				seg_mask = 0;
 				new_depth = 0;
 			}

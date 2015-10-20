@@ -49,7 +49,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	DWORD threadId;
 	HANDLE hThread = NULL;
-	if (context->operation_mode == mobamas::OperationMode::MidAirMode) {
+	if (context->operation_mode == mobamas::OperationMode::MidAirMode || context->operation_mode == mobamas::OperationMode::FrontMode) {
 		if (client->Prepare()) {
 			hThread = CreateThread(NULL, 0, RunRealSense, context.get(), 0, &threadId);
 			if (hThread == NULL) {

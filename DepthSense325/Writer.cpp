@@ -42,6 +42,8 @@ static std::wstring ToString(OperationMode model) {
 		return L"touch";
 	case MidAirMode:
 		return L"midair";
+	case FrontMode:
+		return L"front";
 	default:
 		assert(false && "unspecified model case");
 	}

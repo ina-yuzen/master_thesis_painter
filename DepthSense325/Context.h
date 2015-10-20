@@ -15,6 +15,7 @@ enum OperationMode {
 	MouseMode,
 	TouchMode,
 	MidAirMode,
+	FrontMode,
 };
 
 struct Context {
