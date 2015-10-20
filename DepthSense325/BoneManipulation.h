@@ -20,6 +20,11 @@ struct BoneHandle {
 	unsigned int handle_bone_id;
 };
 
+struct MouseTiming {
+	Polycode::Vector2 position;
+	int timestamp;
+};
+
 class BoneManipulation: public Polycode::EventHandler, public PinchEventListener {
 public:
 	BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, Models model);
@@ -44,8 +49,10 @@ private:
 	volatile bool require_xy_rotation_center_recalculation_ = false;
 	volatile bool ctrl_pressed_ = false;
 	std::deque<cv::Point3f> cached_points_;
+	MouseTiming down_timing_;
 
 	BoneHandle* SelectHandleByWindowCoord(Polycode::Vector2 point, double allowed_error = 0.1);
+	void BoneManipulation::RotateBy(Polycode::Quaternion const& q);
 };
 
 }

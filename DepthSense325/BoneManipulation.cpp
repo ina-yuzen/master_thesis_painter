@@ -110,6 +110,17 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 const int kMouseButtonCode = 0;
 const double kSensitivity = 1;
 
+static MouseTiming TimingFromEvent(InputEvent* ie) {
+	MouseTiming t;
+	t.timestamp = ie->timestamp;
+	t.position = ie->getMousePosition();
+	return t;
+}
+
+static bool IsClick(MouseTiming const& down, MouseTiming const& up) {
+	return up.timestamp - down.timestamp < 200 && up.position.distance(down.position) < 3;
+}
+
 void BoneManipulation::handleEvent(Polycode::Event *e) {
 	using Polycode::InputEvent;
 
@@ -137,13 +148,27 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 			OnPinchStart(fake_3d_coord(ie));
 			e->cancelEvent();
 		}
+		down_timing_ = TimingFromEvent(ie);
 		break;
 	}
 	case InputEvent::EVENT_MOUSEUP:
 	{
 		auto ie = (InputEvent*)e;
-		if (ie->getMouseButton() == kMouseButtonCode)
-			OnPinchEnd();
+		std::cout << "down" << std::endl;
+		if (ie->getMouseButton() == kMouseButtonCode) {
+			if (IsClick(down_timing_, TimingFromEvent(ie))) {
+				if (current_target_.load()) {
+					OnPinchEnd();
+				}
+				else {
+					OnPinchStart(fake_3d_coord(ie));
+				}
+				e->cancelEvent();
+			}
+			else if (current_target_.load()) {
+				OnPinchEnd();
+			}
+		}
 		break;
 	}
 	case InputEvent::EVENT_KEYDOWN:
@@ -152,6 +177,17 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 		auto key = ie->getKey();
 		if (key == KEY_LCTRL || key == KEY_RCTRL)
 			ctrl_pressed_ = true;
+		if (current_target_.load()) {
+			Polycode::Quaternion q;
+			if (key == KEY_UP || key == KEY_RIGHT) {
+				q.createFromAxisAngle(0, 0, 1, 10);
+				RotateBy(q);
+			}
+			else if (key == KEY_DOWN || key == KEY_LEFT) {
+				q.createFromAxisAngle(0, 0, 1, -10);
+				RotateBy(q);
+			}
+		}
 		break;
 	}
 	case InputEvent::EVENT_KEYUP:
@@ -294,6 +330,15 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 	auto to = Polycode::Vector3(to_xy.x, - to_xy.y, (pinch_prev_.z - point_new.z) * - 1);
 	from.Normalize(); to.Normalize();
 	auto diff = FromTwoVectors(from, to);
+	RotateBy(diff);
+	pinch_prev_ = point_new;
+}
+
+void BoneManipulation::RotateBy(Polycode::Quaternion const& diff) {
+	auto target = current_target_.load();
+	if (target == nullptr)
+		return;
+
 	Polycode::Quaternion parents, parents_inv;
 	auto parent = target->bone->getParentBone();
 	while (parent) {
@@ -310,7 +355,6 @@ void BoneManipulation::OnPinchMove(cv::Point3f point) {
 			Polycode::Vector3(0, 0, 1));
 	}
 	target->bone->setRotationByQuaternion(new_quot);
-	pinch_prev_ = point_new;
 	mesh_->applyBoneMotion();
 }
 
