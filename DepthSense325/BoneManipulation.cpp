@@ -7,6 +7,7 @@
 #include "Context.h"
 #include "EditorApp.h"
 #include "Import.h"
+#include "PenAsMouse.h"
 #include "PenPicker.h"
 #include "Util.h"
 #include "Writer.h"
@@ -109,6 +110,7 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
 		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
 		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
+		new PenAsMouse(this);
 	}
 	pinch_start_sound_ = new Polycode::Sound("Resources/click7.wav");
 	pinch_end_sound_ = new Polycode::Sound("Resources/click21.wav");
@@ -151,7 +153,9 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEDOWN:
 	{
 		auto ie = (InputEvent*)e;
-		if (ie->getMouseButton() == kMouseButtonCode && (capture_mouse_event_ || picker_->pen_target() == PenTarget::BONE)) {
+
+		if ((ie->getMouseButton() == kMouseButtonCode && capture_mouse_event_) ||
+			(context_->operation_mode == OperationMode::TouchMode && picker_->pen_target() == PenTarget::BONE)) {
 			OnPinchStart(fake_3d_coord(ie));
 			e->cancelEvent();
 		}
@@ -161,7 +165,6 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEUP:
 	{
 		auto ie = (InputEvent*)e;
-		std::cout << "down" << std::endl;
 		if (ie->getMouseButton() == kMouseButtonCode) {
 			if (IsClick(down_timing_, TimingFromEvent(ie))) {
 				if (current_target_.load()) {
