@@ -13,6 +13,7 @@ namespace mobamas {
 
 struct Context;
 class MeshGroup;
+class PenPicker;
 
 struct BoneHandle {
 	Polycode::Bone* bone;
@@ -27,7 +28,7 @@ struct MouseTiming {
 
 class BoneManipulation: public Polycode::EventHandler, public PinchEventListener {
 public:
-	BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, Models model);
+	BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup *mesh, Models model, PenPicker* picker);
 	void handleEvent(Polycode::Event *e) override;
 	void Update();
 
@@ -37,6 +38,7 @@ public:
 	
 private:
 	std::shared_ptr<Context> context_;
+	PenPicker* picker_;
 	Polycode::Sound* pinch_start_sound_;
 	Polycode::Sound* pinch_end_sound_;
 	Polycode::Scene *scene_;
@@ -47,7 +49,7 @@ private:
 	Polycode::Vector2 xy_rotation_center_;
 	cv::Point3f pinch_prev_;
 	volatile bool require_xy_rotation_center_recalculation_ = false;
-	volatile bool ctrl_pressed_ = false;
+	volatile bool capture_mouse_event_ = false;
 	std::deque<cv::Point3f> cached_points_;
 	MouseTiming down_timing_;
 

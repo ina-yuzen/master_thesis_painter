@@ -7,6 +7,7 @@
 #include "Context.h"
 #include "EditorApp.h"
 #include "Import.h"
+#include "PenPicker.h"
 #include "Util.h"
 #include "Writer.h"
 
@@ -57,8 +58,9 @@ Polycode::ScenePrimitive* CreateHandleMarker() {
 	return marker;
 }
 
-BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup* mesh, Models model) :
+BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::Scene *scene, MeshGroup* mesh, Models model, PenPicker* picker) :
     context_(context),
+	picker_(picker),
 	EventHandler(),
 	scene_(scene),
 	mesh_(mesh),
@@ -94,14 +96,19 @@ BoneManipulation::BoneManipulation(std::shared_ptr<Context> context, Polycode::S
 		scene->addEntity(handle.marker);
 	}
 
+	auto input = Polycode::CoreServices::getInstance()->getInput();
+	using Polycode::InputEvent;
 	if (context->operation_mode == OperationMode::MouseMode) {
-		auto input = Polycode::CoreServices::getInstance()->getInput();
-		using Polycode::InputEvent;
 		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
 		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
 		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
 		input->addEventListener(this, InputEvent::EVENT_KEYDOWN);
 		input->addEventListener(this, InputEvent::EVENT_KEYUP);
+	}
+	if (context->operation_mode == OperationMode::TouchMode) {
+		input->addEventListener(this, InputEvent::EVENT_MOUSEMOVE);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEDOWN);
+		input->addEventListener(this, InputEvent::EVENT_MOUSEUP);
 	}
 	pinch_start_sound_ = new Polycode::Sound("Resources/click7.wav");
 	pinch_end_sound_ = new Polycode::Sound("Resources/click21.wav");
@@ -135,7 +142,7 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEMOVE:
 	{
 		auto ie = (InputEvent*)e;
-		if (ctrl_pressed_) {
+		if (capture_mouse_event_ || picker_->pen_target() == PenTarget::BONE) {
 			OnPinchMove(fake_3d_coord(ie));
 			e->cancelEvent();
 		}
@@ -144,7 +151,7 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 	case InputEvent::EVENT_MOUSEDOWN:
 	{
 		auto ie = (InputEvent*)e;
-		if (ie->getMouseButton() == kMouseButtonCode && ctrl_pressed_) {
+		if (ie->getMouseButton() == kMouseButtonCode && (capture_mouse_event_ || picker_->pen_target() == PenTarget::BONE)) {
 			OnPinchStart(fake_3d_coord(ie));
 			e->cancelEvent();
 		}
@@ -176,7 +183,7 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 		auto ie = (InputEvent*)e;
 		auto key = ie->getKey();
 		if (key == KEY_LCTRL || key == KEY_RCTRL)
-			ctrl_pressed_ = true;
+			capture_mouse_event_ = true;
 		if (current_target_.load()) {
 			Polycode::Quaternion q;
 			if (key == KEY_UP || key == KEY_RIGHT) {
@@ -195,7 +202,7 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 		auto ie = (InputEvent*)e;
 		auto key = ie->getKey();
 		if (key == KEY_LCTRL || key == KEY_RCTRL)
-			ctrl_pressed_ = false;
+			capture_mouse_event_ = false;
 		break;
 	}
 	}

@@ -75,6 +75,15 @@ PenPicker::PenPicker(std::shared_ptr<Context> context):
 		scene_->addChild(plane);
 		stamp_picks_.push_back(plane);
 	}
+	if (context->operation_mode == OperationMode::TouchMode) {
+		MaterialManager *materialManager = CoreServices::getInstance()->getMaterialManager();
+		pen_target_textures_[PenTarget::DRAW] = materialManager->createTextureFromFile("Resources\\hand-paper.png", materialManager->clampDefault, materialManager->mipmapsDefault);
+		pen_target_textures_[PenTarget::BONE] = materialManager->createTextureFromFile("Resources\\hand-rock.png", materialManager->clampDefault, materialManager->mipmapsDefault);
+		pen_target_pick_ = new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_VPLANE, kSize, kSize);
+		pen_target_pick_->setPosition(kWinWidth - kSize * 2 - 20, kSize * stamps.size() + 20);
+		pen_target_pick_->setTexture(pen_target_textures_[pen_target_]);
+		scene_->addChild(pen_target_pick_);
+	}
 	current_size_ = 1;
 
 	cursor_.reset(new Polycode::ScenePrimitive(Polycode::ScenePrimitive::TYPE_CIRCLE, 10, 10, 10));
@@ -131,6 +140,13 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 			context_->writer->log() << "StampPicked" << std::endl;
 			UpdateCursorStyle();
 			break;
+		}
+	}
+	if (context_->operation_mode == OperationMode::TouchMode) {
+		if (IsClicking(point, pen_target_pick_)) {
+			pen_target_ = pen_target_ == PenTarget::BONE ? PenTarget::DRAW : PenTarget::BONE;
+			pen_target_pick_->setTexture(pen_target_textures_[pen_target_]);
+			context_->writer->log() << "Pen target is changed to " << (pen_target_ == PenTarget::BONE ? "BONE" : "DRAW") << std::endl;
 		}
 	}
 }

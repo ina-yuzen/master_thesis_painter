@@ -8,6 +8,10 @@ enum Brush {
 	PEN, STAMP
 };
 
+enum PenTarget {
+	DRAW, BONE
+};
+
 struct Context;
 
 class PenPicker: public Polycode::EventHandler {
@@ -18,6 +22,7 @@ public:
 	Polycode::Color current_color() { return current_color_; }
 	int current_size() { return current_size_; }
 	Polycode::Texture* current_stamp() { return current_stamp_; }
+	PenTarget pen_target() { return pen_target_; }
 
 	static int DisplaySize(int size) {
 		return (size + 1) * 5;
@@ -34,6 +39,9 @@ private:
 	std::vector<Polycode::ScenePrimitive*> color_picks_;
 	std::vector<Polycode::ScenePrimitive*> size_picks_;
 	std::vector<Polycode::SceneMesh*> stamp_picks_;
+	PenTarget pen_target_ = PenTarget::DRAW;
+	Polycode::SceneMesh* pen_target_pick_;
+	Polycode::Texture* pen_target_textures_[2];
 
 	std::unique_ptr<Polycode::ScenePrimitive> cursor_;
 

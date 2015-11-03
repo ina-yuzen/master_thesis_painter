@@ -92,7 +92,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) : con
 		hand_visualization_.reset(new HandVisualization(scene, context->rs_client));
 	}
 	auto picker = new PenPicker(context); // adjust event handler order
-	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model));
+	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model, picker));
 	painter_.reset(new ModelPainter(context, scene, mesh_, picker));
 	rotation_.reset(new ModelRotation(context, mesh_));
 
