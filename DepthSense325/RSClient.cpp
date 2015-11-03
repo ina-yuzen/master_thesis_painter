@@ -88,7 +88,7 @@ static cv::Mat ConvertDepthImage(PXCCapture::Sample* sample) {
 	return mat;
 }
 
-const float kX = 4.0E-3, kY = 4.0E-3, kYOffset = 0.25;
+const float kX = 1.0E-2, kY = 1.0E-2, kYOffset = 0.7;
 const uint16_t kZFar = 1200;
 static void ReplaceFrontalOrigin(cv::Mat& raw_depth, cv::Mat& seg_mask, uint16_t saturated) {
 	assert(!raw_depth.empty());
