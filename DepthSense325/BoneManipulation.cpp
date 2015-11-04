@@ -45,7 +45,12 @@ const std::map<Models, std::vector<std::wstring>> kManipulatableBones = ([] {
 		std::vector<std::wstring> v;
 		v.push_back(L"Bone002");
 		map[Models::TREASURE] = v;
-		}
+	}
+	{
+		std::vector<std::wstring> v;
+		v.push_back(L"‰E˜r");
+		map[Models::DOG] = v;
+	}
 	return map;
 })();
 

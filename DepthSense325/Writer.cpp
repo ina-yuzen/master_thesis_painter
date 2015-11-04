@@ -29,6 +29,8 @@ static std::wstring ToString(Models model) {
 		return L"miku";
 	case TREASURE:
 		return L"treasure";
+	case DOG:
+		return L"dog";
 	default:
 		assert(false && "unspecified model case");
 	}

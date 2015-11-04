@@ -12,28 +12,6 @@
 
 namespace mobamas {
 
-Polycode::SceneMesh* LoadMesh(Models model) {
-	Polycode::SceneMesh* mesh;
-	switch (model) {
-	case Models::MIKU:
-		mesh = new SceneMesh("Resources/tdamiku.mesh");
-		mesh->loadTexture("Resources/tdamiku.png");
-		mesh->loadSkeleton("Resources/tdamiku.skeleton");
-		break;
-	case Models::ROBOT:
-		mesh = new SceneMesh("Resources/dummy.mesh");
-		mesh->loadTexture("Resources/dummy.png");
-		mesh->loadSkeleton("Resources/dummy.skeleton");
-		mesh->Scale(3, 3, 3);
-		break;
-	default:
-		std::cout << "Unknown model" << std::endl;
-		assert(false);
-		break;
-	}
-	return mesh;
-}
-
 MeshGroup* LoadMesh2(Models model) {
 	switch (model) {
 	case Models::MIKU:
@@ -46,6 +24,12 @@ MeshGroup* LoadMesh2(Models model) {
 	{
 		auto group = importCollada("Resources/treasure.dae");
 		//group->Scale(1);
+		return group;
+	}
+	case Models::DOG:
+	{
+		auto group = importCollada("Resources/dog.dae");
+		group->Scale(0.4);
 		return group;
 	}
 	default:
