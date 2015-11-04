@@ -112,15 +112,14 @@ void PenPicker::UpdateCursorStyle() {
 	}
 }
 
-void PenPicker::PickClicked(const Polycode::Vector2& point) {
-	auto root = scene_->rootEntity;
+bool PenPicker::PickClicked(const Polycode::Vector2& point) {
 	for (auto color_pick : color_picks_) {
 		if (IsClicking(point, color_pick)) {
 			current_brush_ = Brush::PEN;
 			current_color_ = color_pick->color;
 			context_->writer->log() << "PenColorChanged " << current_color_.r << ", " << current_color_.g << ", " << current_color_.b << std::endl;
 			UpdateCursorStyle();
-			break;
+			return true;
 		}
 	}
 	for (auto size_pick: size_picks_) {
@@ -130,7 +129,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 			current_size_ = (int)(size / 5) - 1;
 			context_->writer->log() << "PenSizeChanged " << current_size_ << std::endl;
 			UpdateCursorStyle();
-			break;
+			return true;
 		}
 	}
 	for (auto pick: stamp_picks_) {
@@ -139,7 +138,7 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 			current_stamp_ = pick->getTexture();
 			context_->writer->log() << "StampPicked" << std::endl;
 			UpdateCursorStyle();
-			break;
+			return true;
 		}
 	}
 	if (context_->operation_mode == OperationMode::TouchMode) {
@@ -147,8 +146,10 @@ void PenPicker::PickClicked(const Polycode::Vector2& point) {
 			pen_target_ = pen_target_ == PenTarget::BONE ? PenTarget::DRAW : PenTarget::BONE;
 			pen_target_pick_->setTexture(pen_target_textures_[pen_target_]);
 			context_->writer->log() << "Pen target is changed to " << (pen_target_ == PenTarget::BONE ? "BONE" : "DRAW") << std::endl;
+			return true;
 		}
 	}
+	return false;
 }
 
 void PenPicker::handleEvent(Polycode::Event *e) {
@@ -157,7 +158,9 @@ void PenPicker::handleEvent(Polycode::Event *e) {
 	switch (e->getEventCode()) {
 	case InputEvent::EVENT_MOUSEDOWN: 
 		if (ie->getMouseButton() == Polycode::CoreInput::MOUSE_BUTTON1)
-			PickClicked(((InputEvent*)e)->getMousePosition());
+			if (PickClicked(((InputEvent*)e)->getMousePosition())) {
+				e->cancelEvent();
+			}
 		break;
 	case InputEvent::EVENT_MOUSEMOVE:
 		auto point = ((InputEvent*)e)->getMousePosition();

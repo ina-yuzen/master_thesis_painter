@@ -45,7 +45,7 @@ private:
 
 	std::unique_ptr<Polycode::ScenePrimitive> cursor_;
 
-	void PickClicked(const Polycode::Vector2& point);
+	bool PickClicked(const Polycode::Vector2& point);
 	void UpdateCursorStyle();
 };
 
