@@ -4,12 +4,13 @@
 #include <mutex>
 #include <memory>
 #include "PinchTracker.h"
+#include <Polycode.h>
 
 namespace mobamas {
 
 struct Context;
 
-class RSClient
+class RSClient :public Polycode::EventHandler
 {
 public:
 	RSClient(std::shared_ptr<Context> context) : context_(context), tracker_(context) {}
@@ -21,6 +22,7 @@ public:
 		std::lock_guard<std::mutex> lock(mutex_);
 		return segmented_depth_.clone(); 
 	}
+	void handleEvent(Polycode::Event *e);
 
 private:
 	volatile bool should_quit_ = false;
@@ -29,6 +31,8 @@ private:
 	PXCSenseManager *sm_;
 	cv::Mat segmented_depth_;
 	std::mutex mutex_;
+	float kX, kY, kYOffset;
+	uint16_t kZFar;
 };
 
 }

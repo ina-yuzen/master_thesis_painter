@@ -20,6 +20,16 @@ bool RSClient::Prepare() {
 		return false;
 	};
 
+	kX = 1.0E-2, kY = 1.0E-2, kYOffset = 0.7;
+	kZFar = 1200;
+
+	auto input = Polycode::CoreServices::getInstance()->getInput();
+	using Polycode::InputEvent;
+	if (context_->operation_mode == OperationMode::FrontMode) {
+		input->addEventListener(this, InputEvent::EVENT_KEYDOWN);
+		input->addEventListener(this, InputEvent::EVENT_KEYUP);
+	}
+
 	sm_ = PXCSenseManager::CreateInstance();
 	if (sm_ == nullptr) {
 		return false;
@@ -40,8 +50,65 @@ bool RSClient::Prepare() {
 	st = sm_->QueryCaptureManager()->QueryDevice()->SetMirrorMode(PXCCapture::Device::MirrorMode::MIRROR_MODE_HORIZONTAL);
 	if (st != PXC_STATUS_NO_ERROR)
 		return handle_error(st);
-	
+
 	return true;
+}
+void RSClient::handleEvent(Polycode::Event *e) {
+	using Polycode::InputEvent;
+	float kxyunit = 1.0E-3;
+	float offsetunit = 0.1;
+	uint16_t zfarunit = 100;
+	switch (e->getEventCode()) {
+	case InputEvent::EVENT_KEYDOWN:
+	{
+		auto ie = (InputEvent*)e;
+		auto key = ie->getKey();
+		switch (key) {
+			case Polycode::PolyKEY::KEY_z:
+			{
+				kX += kxyunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_x:
+			{
+				kX -= kxyunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_c:
+			{
+				kY += kxyunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_v:
+			{
+				kY -= kxyunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_b:
+			{
+				kYOffset += offsetunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_n:
+			{
+				kYOffset -= offsetunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_m:
+			{
+				kZFar += zfarunit;
+				break;
+			}
+			case Polycode::PolyKEY::KEY_COMMA:
+			{
+				kZFar-= zfarunit;
+				break;
+			}
+		}
+		std::cout << "kX: " << kX << ", kY: " << kY << ", kYOffset: " << kYOffset << ", kZFar: " << kZFar << std::endl;
+		break;
+	}
+	}
 }
 
 /**
@@ -88,9 +155,7 @@ static cv::Mat ConvertDepthImage(PXCCapture::Sample* sample) {
 	return mat;
 }
 
-const float kX = 1.0E-2, kY = 1.0E-2, kYOffset = 0.7;
-const uint16_t kZFar = 1200;
-static void ReplaceFrontalOrigin(cv::Mat& raw_depth, cv::Mat& seg_mask, uint16_t saturated) {
+static void ReplaceFrontalOrigin(cv::Mat& raw_depth, cv::Mat& seg_mask, uint16_t saturated, float kX, float kY, float kYOffset, uint16_t kZFar) {
 	assert(!raw_depth.empty());
 	assert(raw_depth.size() == seg_mask.size());
 	cv::Mat new_depth(raw_depth.rows, raw_depth.cols, raw_depth.type());
@@ -195,7 +260,7 @@ void RSClient::Run() {
 			seg_mask = cv::Mat(raw_depth.size(), CV_8UC1, cv::Scalar(0));
 		}
 		if (context_->operation_mode == OperationMode::FrontMode) {
-			ReplaceFrontalOrigin(raw_depth, seg_mask, saturated);
+			ReplaceFrontalOrigin(raw_depth, seg_mask, saturated, kX, kY, kYOffset, kZFar);
 		}
 
 		cv::Mat new_depth;
