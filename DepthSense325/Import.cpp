@@ -463,7 +463,7 @@ MeshGroup* ModelLoader::loadMesh() {
 	Assimp::Importer importer;
 	sc_ = importer.ReadFile(file_path_, aiProcess_Triangulate | aiProcess_ValidateDataStructure | aiProcess_FindInvalidData);
 	if (sc_ == nullptr) {
-		std::cerr << "Failed to load " << file_path_ << " by Assimp::Importer" << std::endl;
+		std::cerr << "Failed to load " << file_path_ << " by Assimp::Importer " << importer.GetErrorString() << std::endl;
 		return nullptr;
 	}
 
