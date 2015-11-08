@@ -6,7 +6,8 @@ enum Models {
 	ROBOT,
 	MIKU,
 	TREASURE,
-	DOG
+	DOG, 
+	BIRD
 };
 
 }

@@ -32,6 +32,12 @@ MeshGroup* LoadMesh2(Models model) {
 		group->Scale(0.4);
 		return group;
 	}
+	case Models::BIRD:
+	{
+		auto group = importCollada("Resources/hato_ruto_b.dae");
+		group->Scale(0.4);
+		return group;
+	}
 	default:
 		std::cout << "Unknown model" << std::endl;
 		assert(false);

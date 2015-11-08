@@ -31,6 +31,8 @@ static std::wstring ToString(Models model) {
 		return L"treasure";
 	case DOG:
 		return L"dog";
+	case BIRD:
+		return L"bird";
 	default:
 		assert(false && "unspecified model case");
 	}
