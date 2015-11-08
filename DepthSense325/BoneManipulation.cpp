@@ -57,6 +57,15 @@ const std::map<Models, std::vector<std::wstring>> kManipulatableBones = ([] {
 	}
 	{
 		std::vector<std::wstring> v;
+		v.push_back(L"右アンテナ");
+		v.push_back(L"左アンテナ");
+		v.push_back(L"首(実体)");
+		v.push_back(L"右足");
+		v.push_back(L"左足");
+		map[Models::TV] = v;
+	}
+	{
+		std::vector<std::wstring> v;
 		v.push_back(L"右腕");
 		v.push_back(L"左腕");
 		v.push_back(L"しっぽ");

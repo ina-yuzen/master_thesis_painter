@@ -33,6 +33,13 @@ MeshGroup* LoadMesh2(Models model) {
 		group->Scale(0.4);
 		return group;
 	}
+	case Models::TV:
+	{
+		auto group = importCollada("Resources/tv.dae");
+		group->centralize();
+		group->Scale(0.4);
+		return group;
+	}
 	case Models::BIRD:
 	{
 		auto group = importCollada("Resources/hato_ruto_b.dae");
