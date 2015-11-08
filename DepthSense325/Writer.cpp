@@ -54,7 +54,7 @@ static std::wstring ToString(OperationMode model) {
 }
 
 Writer::Writer(Models const& model, OperationMode const& mode) : recorder_(nullptr) {
-	dirname_ = strftime(L"rec_%m%d-%H%M") + L"_" 
+	dirname_ = strftime(L"rec_%m%d-%H%M%S") + L"_" 
 		+ ToString(model) + L"_" 
 		+ ToString(mode);
 	assert(_wmkdir(dirname_.c_str()) == 0 && "Failed to create writer directory");
