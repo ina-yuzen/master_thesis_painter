@@ -64,15 +64,18 @@ Polycode::Material* createMaterial(std::string name) {
 	return mat;
 }
 
+MeshGroup::MeshGroup() : Polycode::Entity(), wrapper_(new Polycode::Entity()) {
+	addChild(wrapper_);
+}
+
 // FIXME: misbehave against models without bone weights
 void MeshGroup::applyBoneMotion() {
 	if (!skeleton_)
 		return;
 	skeleton_->Update();
-	for (auto child : children) {
+	for (auto child : getSceneMeshes()) {
 		auto mesh = static_cast<EnhSceneMesh*>(child);
 		auto raw = mesh->getMesh();
-		auto mesh_transform = child->getTransformMatrix();
 		auto parr = mesh->original_position_array();
 		auto narr = mesh->original_normal_array();
 		for (int vidx = 0; vidx < raw->vertexPositionArray.data.size() / 3; vidx++) {
@@ -105,11 +108,44 @@ void MeshGroup::applyBoneMotion() {
 	}
 }
 
+void MeshGroup::centralize() {
+	const float inf = std::numeric_limits<float>::infinity();
+	Polycode::Vector3 min(inf, inf, inf), max(-inf, -inf, -inf);
+	for (auto child : getSceneMeshes()) {
+		auto mesh = static_cast<EnhSceneMesh*>(child);
+		auto raw = mesh->getMesh();
+		for (int vidx = 0; vidx < raw->vertexPositionArray.data.size() / 3; vidx++) {
+			float x = raw->vertexPositionArray.data[vidx * 3],
+				y = raw->vertexPositionArray.data[vidx * 3 + 1],
+				z = raw->vertexPositionArray.data[vidx * 3 + 2];
+			if (x < min.x)
+				min.x = x;
+			if (y < min.y)
+				min.y = y;
+			if (z < min.z)
+				min.z = z;
+			if (x > max.x)
+				max.x = x;
+			if (y > max.y)
+				max.y = y;
+			if (z > max.z)
+				max.z = z;
+		}
+	}
+	// currently, consider only Y
+	wrapper_->setPositionY(-(min.y + max.y) / 2);
+}
+
+void MeshGroup::addSceneMesh(Polycode::SceneMesh* newChild) {
+	wrapper_->addChild(newChild);
+}
+
 std::vector<Polycode::SceneMesh*> MeshGroup::getSceneMeshes() {
 	std::vector<Polycode::SceneMesh*> result;
-	result.resize(getNumChildren());
-	for (int i = 0, n = getNumChildren(); i < n; ++i) {
-		result[i] = static_cast<Polycode::SceneMesh*>(getChildAtIndex(i));
+	size_t count = wrapper_->getNumChildren();
+	result.resize(count);
+	for (int i = 0, n = count; i < n; ++i) {
+		result[i] = static_cast<Polycode::SceneMesh*>(wrapper_->getChildAtIndex(i));
 	}
 	return result;
 }
@@ -290,7 +326,6 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 			int wchars_num = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, NULL, 0);
 			wchar_t* wstr = new wchar_t[wchars_num];
 			MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, wstr, wchars_num);
-			// do whatever with wstr
 			scene_mesh->loadTexture(wstr);
 			delete[] wstr;
 		}
@@ -331,7 +366,7 @@ void ModelLoader::buildMesh(const struct aiNode* nd) {
 		}
 
 		// FIXME: 親子関係を崩してしまっているのでモデルによっては相対になってる行列が壊れるかも
-		group_->addChild(scene_mesh);
+		group_->addSceneMesh(scene_mesh);
 	}
 
 	// drill down to all children

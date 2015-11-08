@@ -29,12 +29,14 @@ MeshGroup* LoadMesh2(Models model) {
 	case Models::DOG:
 	{
 		auto group = importCollada("Resources/dog.dae");
+		group->centralize();
 		group->Scale(0.4);
 		return group;
 	}
 	case Models::BIRD:
 	{
 		auto group = importCollada("Resources/hato_ruto_b.dae");
+		group->centralize();
 		group->Scale(0.4);
 		return group;
 	}
