@@ -37,6 +37,7 @@ static std::wstring ToString(Models model) {
 		return L"tv";
 	default:
 		assert(false && "unspecified model case");
+		return L"";
 	}
 }
 
@@ -52,6 +53,7 @@ static std::wstring ToString(OperationMode model) {
 		return L"front";
 	default:
 		assert(false && "unspecified model case");
+		return L"";
 	}
 }
 
