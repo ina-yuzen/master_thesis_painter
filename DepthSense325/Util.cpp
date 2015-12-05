@@ -44,10 +44,12 @@ namespace mobamas {
 	void DisplayPinchMats(DepthMap const& depth_map, Option<cv::Point3f> const& pinch_point) {
 #ifdef _DEBUG
 		IplImage *writeTo = cvCreateImage(cvSize(depth_map.w, depth_map.h), IPL_DEPTH_8U, 3);
-		IplImage background = depth_map.normalized;
+		auto roi = cv::Rect(depth_map.offset, depth_map.offset + cv::Point(depth_map.w, depth_map.h));
+		IplImage background = depth_map.normalized(roi);
 		cvMerge(&background, &background ,&background, NULL, writeTo);
-		for (size_t i = 0; i < depth_map.binary.total(); i++) {
-			writeTo->imageData[i * 3 + 2] = depth_map.binary.at<uchar>(i) > 0 ? 0xff : 0;
+		auto binary = depth_map.binary(roi);
+		for (size_t i = 0; i < binary.total(); i++) {
+			writeTo->imageData[i * 3 + 2] = binary.at<uchar>(i) > 0 ? 0xff : 0;
 		}
 		if (pinch_point) {
 			cv::Point img_pt((*pinch_point).x * depth_map.w, (*pinch_point).y * depth_map.h);

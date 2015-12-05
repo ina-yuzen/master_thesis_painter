@@ -3,8 +3,9 @@
 #include <opencv2\opencv.hpp>
 #include <mutex>
 #include <memory>
-#include "PinchTracker.h"
 #include <Polycode.h>
+#include "DepthMap.h"
+#include "PinchTracker.h"
 
 namespace mobamas {
 
@@ -18,9 +19,9 @@ public:
 	bool Prepare();
 	void Run();
 	void Quit();
-	cv::Mat segmented_depth() { 
+	DepthMap last_depth_map() { 
 		std::lock_guard<std::mutex> lock(mutex_);
-		return segmented_depth_.clone(); 
+		return last_depth_map_; 
 	}
 	void handleEvent(Polycode::Event *e);
 
@@ -29,7 +30,7 @@ private:
 	std::shared_ptr<Context> context_;
 	PinchTracker tracker_;
 	PXCSenseManager *sm_;
-	cv::Mat segmented_depth_;
+	DepthMap last_depth_map_;
 	std::mutex mutex_;
 	float kX, kY, kYOffset;
 	uint16_t kZFar;

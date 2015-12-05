@@ -10,6 +10,7 @@ struct DepthMap {
 	cv::Mat raw_mat;
 	cv::Mat normalized;
 	cv::Mat binary;  // binary image in which white is interested
+	cv::Point offset;
 };
 
 }

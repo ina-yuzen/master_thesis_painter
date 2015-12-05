@@ -6,7 +6,7 @@
 
 namespace mobamas {
 
-	void PinchTracker::NotifyNewData(DepthMap const& depth_map, Option<cv::Point3f> const& data) {
+	void PinchTracker::NotifyNewData(Option<cv::Point3f> const& data) {
 		auto listener = context_->pinch_listeners.lock();
 		if (!listener)
 			return;

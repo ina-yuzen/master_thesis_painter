@@ -155,27 +155,33 @@ static cv::Mat ConvertDepthImage(PXCCapture::Sample* sample) {
 	return mat;
 }
 
-static void ReplaceFrontalOrigin(cv::Mat& raw_depth, cv::Mat& seg_mask, uint16_t saturated, float kX, float kY, float kYOffset, uint16_t kZFar) {
+static void ReplaceFrontalOrigin(cv::Mat& raw_depth, cv::Mat& seg_mask, cv::Point& offset, uint16_t saturated, float kX, float kY, float kYOffset, uint16_t kZFar) {
 	assert(!raw_depth.empty());
 	assert(raw_depth.size() == seg_mask.size());
-	cv::Mat new_depth(raw_depth.rows, raw_depth.cols, raw_depth.type());
-	cv::Mat new_mask(seg_mask.rows, seg_mask.cols, seg_mask.type());
+	int cx = raw_depth.cols / 2, cy = raw_depth.rows / 2;
+	offset = cv::Point(raw_depth.cols / 2, raw_depth.rows / 2);
+
+	cv::Mat new_depth(raw_depth.rows * 2, raw_depth.cols * 2, raw_depth.type());
+	cv::Point max(new_depth.cols - offset.x - 1, new_depth.rows - offset.y - 1);
+	cv::Mat new_mask(new_depth.rows, new_depth.cols, seg_mask.type());
 	new_depth = saturated;
 	new_mask = 0;
-	int cx = raw_depth.cols / 2, cy = raw_depth.rows / 2;
 	for (size_t y = 0; y < raw_depth.rows - 1; y++) {
 		for (size_t x = 0; x < raw_depth.cols - 1; x++) {
 			auto z = raw_depth.at<uint16_t>(y, x);
-			if (z == saturated)
+			auto z2 = raw_depth.at<uint16_t>(y+1, x+1);
+			if (z == saturated || z2 == saturated)
 				continue;
 			cv::Point ps(cx + kX * (static_cast<int>(x) - cx) * z, cy + kY * (static_cast<int>(y) - cy) * z - kYOffset * raw_depth.rows);
-			cv::Point pe(cx + kX * (static_cast<int>(x)+1 - cx) * z, cy + kY * (static_cast<int>(y)+1 - cy) * z - kYOffset * raw_depth.rows);
-			if (pe.x < 0 || ps.x >= new_depth.cols || pe.y < 0 || ps.y >= new_depth.rows)
+			cv::Point pe(cx + kX * (static_cast<int>(x)+1 - cx) * z2, cy + kY * (static_cast<int>(y)+1 - cy) * z2 - kYOffset * raw_depth.rows);
+			if (pe.x < -offset.x || pe.y < -offset.y
+				|| ps.x > max.x || ps.y > max.y
+				|| ps.x > pe.x || ps.y > pe.y)
 				continue;
-			for (size_t ix = std::max(0, ps.x); ix <= std::min(pe.x, new_depth.cols - 1); ++ix) {
-				for (size_t iy = std::max(0, ps.y); iy <= std::min(pe.y, new_depth.rows - 1); ++iy) {
-					new_depth.at<uint16_t>(iy, ix) = std::max(kZFar - z, 0);
-					new_mask.at<uint8_t>(iy, ix) = seg_mask.at<uint8_t>(y, x);
+			for (int ix = std::max(ps.x, -offset.x); ix <= std::min(pe.x, max.x); ++ix) {
+				for (int iy = std::max(ps.y, -offset.y); iy <= std::min(pe.y, max.y); ++iy) {
+					new_depth.at<uint16_t>(iy + offset.y, ix + offset.x) = std::max(kZFar - z, 0);
+					new_mask.at<uint8_t>(iy + offset.y, ix + offset.x) = seg_mask.at<uint8_t>(y, x);
 				}
 			}
 		}
@@ -195,12 +201,12 @@ static uint16_t GetMinimumApplicableValue(cv::Mat depth) {
 	return min;
 }
 
-static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_depth, cv::Mat const& binary, uint16_t saturated) {
+static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_depth, cv::Mat const& binary, cv::Point const& offset, uint16_t saturated) {
 	auto depth = sample->depth;
 	auto info = depth->QueryInfo();	
-	auto size = raw_depth.total();
 
 #ifdef _DEBUG
+	auto size = raw_depth.total();
 	cv::Mat norm(raw_depth.size(), CV_8UC1);
 	uint16_t largest = 0;
 	for (size_t i = 0; i < size; i++)
@@ -225,7 +231,8 @@ static DepthMap CreateDepthMap(PXCCapture::Sample* sample, cv::Mat const& raw_de
 		saturated,
 		raw_depth,
 		norm,
-		binary
+		binary,
+		offset
 	};
 }
 
@@ -256,11 +263,12 @@ void RSClient::Run() {
 
 		auto raw_depth = ConvertDepthImage(sample);
 		auto seg_mask = FindFirstSegmentationMask(blob_data);
+		cv::Point offset;
 		if (seg_mask.empty()) {
 			seg_mask = cv::Mat(raw_depth.size(), CV_8UC1, cv::Scalar(0));
 		}
 		if (context_->operation_mode == OperationMode::FrontMode) {
-			ReplaceFrontalOrigin(raw_depth, seg_mask, saturated, kX, kY, kYOffset, kZFar);
+			ReplaceFrontalOrigin(raw_depth, seg_mask, offset, saturated, kX, kY, kYOffset, kZFar);
 		}
 
 		cv::Mat new_depth;
@@ -282,14 +290,30 @@ void RSClient::Run() {
 				new_depth = 0;
 			}
 
+			auto depth_map = CreateDepthMap(sample, raw_depth, seg_mask, offset, saturated);
+			std::cout << "start" << std::endl;
+			/*{
+				IplImage *writeTo = cvCreateImage(cvSize(1000, 1000), IPL_DEPTH_8U, 3);
+				int xstep = depth_map.raw_mat.cols / 1000;
+				int ystep = depth_map.raw_mat.rows / 1000;
+				for (size_t y = 0; y < 1000; y++)
+				{
+					for (size_t x = 0; x < 1000; x++)
+					{
+						writeTo->imageData[y * 1000 + x] = (depth_map.raw_mat.at<uint16_t>(y * ystep, x * xstep) >> 8);
+					}
+				}
+				cvShowImage("raw", writeTo);
+				cvWaitKey(1);
+				cvReleaseImage(&writeTo);
+			}*/
 			{
 				std::lock_guard<std::mutex> lock(mutex_);
-				segmented_depth_ = new_depth;
+				last_depth_map_ = depth_map;
 			}
 
-			auto depth_map = CreateDepthMap(sample, raw_depth, seg_mask, saturated);
 			auto result = PinchRightEdge(context_, depth_map);
-			tracker_.NotifyNewData(depth_map, result);
+			tracker_.NotifyNewData(result);
 		}
 
 		iter_count++;

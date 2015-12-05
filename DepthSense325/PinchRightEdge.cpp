@@ -38,6 +38,7 @@ Option<cv::Point3f> PinchRightEdge(std::shared_ptr<Context> context, const Depth
 
 	Option<cv::Point3f> found = Option<cv::Point3f>::None();
 	double max_area = 0;
+	cv::Point center(data.offset.x + data.w / 2, data.offset.y + data.h / 2);
 	while (cSeq != NULL) {
 		if (cvContourArea(cSeq) > max_area) {
 			found.Clear();
@@ -68,10 +69,13 @@ Option<cv::Point3f> PinchRightEdge(std::shared_ptr<Context> context, const Depth
 						}
 					}
 				}
-				found.Reset(cv::Point3f(
-					right_most_point.x / static_cast<float>(data.w),
-					right_most_point.y / static_cast<float>(data.h),
-					right_most_point.z));
+				float rx = (right_most_point.x - center.x) / static_cast<float>(data.w);
+				float ry = (right_most_point.y - center.y) / static_cast<float>(data.h);
+				if (rx >= -0.5 && rx <= 0.5 && ry >= -0.5 && ry <= 0.5)
+					found.Reset(cv::Point3f(
+						0.5 + rx,
+						0.5 + ry,
+						right_most_point.z));
 			}
 		}
 		cSeq = cSeq->h_next;

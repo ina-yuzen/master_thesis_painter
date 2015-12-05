@@ -15,7 +15,7 @@ public:
 		context_(context), 
 		prev_(std::deque<Option<cv::Point3f>>()),
 		pinching_(false) {}
-	void NotifyNewData(DepthMap const& depth_map, Option<cv::Point3f> const& data);
+	void NotifyNewData(Option<cv::Point3f> const& data);
 
 private:
 	std::shared_ptr<Context> context_;
