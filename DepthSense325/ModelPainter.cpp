@@ -325,6 +325,19 @@ void PaintWorker::PaintTexture(Polycode::Ray const& ray, Intersection const& int
 		std::lock_guard<std::mutex> lock(m_dirty_textures_);
 		dirty_textures_.push_back(texture);
 	}
+	cv::Mat out(tex_mat.size(), tex_mat.type());
+	// correct y-reverse and rgba -> bgra
+	for (size_t y = 0; y < out.rows; y++) {
+		auto ptr = out.ptr<uchar>(y);
+		auto src = tex_mat.ptr<uchar>(y);
+		for (size_t x = 0; x < out.cols; x++) {
+			for (size_t i = 0; i < 4; i++) {
+				ptr[x * 4 + i] = src[x * 4 + (i < 3 ? (2 - i) : i)];
+			}
+		}
+	}
+	cv::imshow("texture", out);
+	cv::waitKey(1);
 }
 
 void PaintWorker::UpdateNextPoint(Polycode::Vector2 const& p) {
