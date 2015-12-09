@@ -9,7 +9,7 @@ struct Context;
 
 class ModelRotation: Polycode::EventHandler {
 public:
-	ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh_);
+	ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh_, Polycode::Entity *mihon_);
 	void handleEvent(Polycode::Event *e) override;
 
 private:
@@ -21,6 +21,7 @@ private:
 
 	std::shared_ptr<Context> context_;
 	Polycode::Entity *mesh_;
+	Polycode::Entity *mihon_;
 	Polycode::Vector2 mouse_prev_;
 	double distance_prev_;
 	bool moving_;

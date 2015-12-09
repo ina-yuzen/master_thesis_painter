@@ -47,6 +47,12 @@ MeshGroup* LoadMesh2(Models model) {
 		group->Scale(0.4);
 		return group;
 	}
+	case Models::MIHON:
+	{
+		auto group = importCollada("Resources/test6.dae");
+		group->Scale(15);
+		return group;
+	}
 	default:
 		std::cout << "Unknown model" << std::endl;
 		assert(false);
@@ -68,6 +74,21 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) : con
 	mesh_ = LoadMesh2(context->model);
 	if (!mesh_) {
 		throw std::runtime_error("Could not load mesh");
+	}
+	if (context->model == Models::MIKU) {
+		mihon_ = LoadMesh2(Models::MIHON);
+		if (!mihon_) {
+			throw std::runtime_error("Could not load mesh");
+		}
+		auto skeleton = mihon_->getSkeleton();
+		auto bone = skeleton->getBoneByName("right_arm");
+		bone->Yaw(-50);
+		bone->Pitch(20);
+		bone = skeleton->getBoneByName("left_arm");
+		bone->Pitch(-100);
+		bone->Yaw(-40);
+		mihon_->applyBoneMotion();
+		scene->addEntity(mihon_); 
 	}
 	scene->addEntity(mesh_);
 	scene->useClearColor = false;
@@ -93,7 +114,7 @@ EditorApp::EditorApp(PolycodeView *view, std::shared_ptr<Context> context) : con
 	auto picker = new PenPicker(context); // adjust event handler order
 	bone_manipulation_.reset(new BoneManipulation(context, scene, mesh_, context->model, picker));
 	painter_.reset(new ModelPainter(context, scene, mesh_, picker));
-	rotation_.reset(new ModelRotation(context, mesh_));
+	rotation_.reset(new ModelRotation(context, mesh_, mihon_));
 
 	context->pinch_listeners = bone_manipulation_;
 }

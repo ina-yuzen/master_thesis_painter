@@ -8,7 +8,8 @@ enum Models {
 	TREASURE,
 	DOG, 
 	BIRD,
-	TV
+	TV,
+	MIHON
 };
 
 }

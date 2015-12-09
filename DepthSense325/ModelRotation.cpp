@@ -12,10 +12,11 @@ const int kDistance = sqrt(27.0);
 const double kSensitivity = 1;
 const double kWheelScaleStep = 1.05;
 
-ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh): 
+ModelRotation::ModelRotation(std::shared_ptr<Context> context, Polycode::Entity *mesh, Polycode::Entity *mihon): 
 	context_(context),
 	EventHandler(), 
 	mesh_(mesh),
+	mihon_(mihon),
 	moving_(false)
 {
 	auto input = Polycode::CoreServices::getInstance()->getInput();
@@ -40,6 +41,10 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 		auto diff = new_pos - mouse_prev_;
 		mesh_->Yaw(diff.x * kSensitivity);
 		mesh_->Pitch(diff.y * kSensitivity);
+		if (mihon_){
+			mihon_->Yaw(diff.x * kSensitivity);
+			mihon_->Pitch(diff.y * kSensitivity);
+		}
 		mouse_prev_ = new_pos;
 	};
 
@@ -65,6 +70,7 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 				auto finger_distance = touches[0].position.distance(touches[1].position);
 				auto diff = (finger_distance - distance_prev_) * 0.01 + 1;
 				mesh_->Scale(diff, diff, diff);
+				if (mihon_) mihon_->Scale(diff, diff, diff);
 				distance_prev_ = finger_distance;
 			}
 		}
@@ -107,9 +113,11 @@ void ModelRotation::handleEvent(Polycode::Event *e) {
 		break;
 	case InputEvent::EVENT_MOUSEWHEEL_UP:
 		mesh_->Scale(kWheelScaleStep);
+		if (mihon_) mihon_->Scale(kWheelScaleStep);
 		break;
 	case InputEvent::EVENT_MOUSEWHEEL_DOWN:
 		mesh_->Scale(1. / kWheelScaleStep);
+		if (mihon_) mihon_->Scale(1. / kWheelScaleStep);
 		break;
 	}
 }

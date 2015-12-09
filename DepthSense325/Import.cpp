@@ -380,6 +380,7 @@ Polycode::Bone* ModelLoader::buildSkeleton(Polycode::Bone *parent, const struct 
 	auto *bone = new Polycode::Bone(name.C_Str());
 	bone->setParentBone(parent);
 	bone->parentBoneId = group_->getSkeleton()->getBoneIndexByBone(parent);
+	bone->disableAnimation = true;
 
 	aiVector3D s;
 	aiQuaternion rq;

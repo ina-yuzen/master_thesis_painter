@@ -105,7 +105,20 @@ void RSClient::handleEvent(Polycode::Event *e) {
 				break;
 			}
 		}
-		std::cout << "kX: " << kX << ", kY: " << kY << ", kYOffset: " << kYOffset << ", kZFar: " << kZFar << std::endl;
+		switch (key) {
+			case Polycode::PolyKEY::KEY_z:
+			case Polycode::PolyKEY::KEY_x:
+			case Polycode::PolyKEY::KEY_c:
+			case Polycode::PolyKEY::KEY_v:
+			case Polycode::PolyKEY::KEY_b:
+			case Polycode::PolyKEY::KEY_n:
+			case Polycode::PolyKEY::KEY_m:
+			case Polycode::PolyKEY::KEY_COMMA:
+			{
+				std::cout << "kX: " << kX << ", kY: " << kY << ", kYOffset: " << kYOffset << ", kZFar: " << kZFar << std::endl;
+				break;
+			}
+		}
 		break;
 	}
 	}

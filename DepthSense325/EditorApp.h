@@ -25,6 +25,7 @@ public:
 private:
 	Polycode::Core *core_;
 	MeshGroup* mesh_;
+	MeshGroup* mihon_;
 	std::shared_ptr<Context> context_;
 	std::shared_ptr<BoneManipulation> bone_manipulation_;
 	std::unique_ptr<HandVisualization> hand_visualization_;

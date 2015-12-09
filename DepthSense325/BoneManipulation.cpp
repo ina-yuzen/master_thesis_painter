@@ -199,7 +199,6 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 				else {
 					OnPinchStart(fake_3d_coord(ie));
 				}
-				e->cancelEvent();
 			}
 			else if (current_target_.load()) {
 				OnPinchEnd();
@@ -216,11 +215,11 @@ void BoneManipulation::handleEvent(Polycode::Event *e) {
 		if (current_target_.load()) {
 			Polycode::Quaternion q;
 			if (key == KEY_UP || key == KEY_RIGHT) {
-				q.createFromAxisAngle(0, 0, 1, 10);
+				q.createFromAxisAngle(0, 0, 1, 2.5);
 				RotateBy(q);
 			}
 			else if (key == KEY_DOWN || key == KEY_LEFT) {
-				q.createFromAxisAngle(0, 0, 1, -10);
+				q.createFromAxisAngle(0, 0, 1, -2.5);
 				RotateBy(q);
 			}
 		}
