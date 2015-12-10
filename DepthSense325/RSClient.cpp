@@ -20,8 +20,48 @@ bool RSClient::Prepare() {
 		return false;
 	};
 
-	kX = 1.0E-2, kY = 1.0E-2, kYOffset = 0.7;
-	kZFar = 1200;
+	LONG lResult;
+	DWORD dwDisposition;
+	static HKEY hKeyResult;
+	DWORD dwData;
+	DWORD dwType = REG_DWORD;
+	static DWORD dwPostalNum;
+	lResult = RegCreateKeyEx(HKEY_CURRENT_USER,
+		TEXT("Software\\Mobamas"),//キー
+		0,//予約
+		NULL,//指定
+		REG_OPTION_NON_VOLATILE,//不揮発性
+		//REG_OPTION_VOLATILE //システムを再起動すると消える揮発性
+		KEY_ALL_ACCESS,//標準アクセス権）のすべての権利を組み合わせたもの
+		NULL,
+		&hKeyResult,
+		&dwDisposition);
+	if (dwDisposition == REG_CREATED_NEW_KEY)
+	{
+		kX = 1.0E-2, kY = 1.0E-2, kYOffset = 0.7;
+		kZFar = 1200;
+		dwPostalNum = 10;
+		RegSetValueEx(hKeyResult, TEXT("kX"), 0, REG_DWORD,	(CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+		RegSetValueEx(hKeyResult, TEXT("kY"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+		dwPostalNum = 7;
+		RegSetValueEx(hKeyResult, TEXT("kYOffset"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+		dwPostalNum = 12;
+		RegSetValueEx(hKeyResult, TEXT("kZFar"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+	} else {
+		RegQueryValueEx(hKeyResult, TEXT("kX"), NULL, &dwType, NULL, &dwData);
+		RegQueryValueEx(hKeyResult, TEXT("kX"), NULL, &dwType, (LPBYTE)&dwPostalNum, &dwData);
+		kX = dwPostalNum * 1.0E-3;
+		RegQueryValueEx(hKeyResult, TEXT("kY"), NULL, &dwType, NULL, &dwData);
+		RegQueryValueEx(hKeyResult, TEXT("kY"), NULL, &dwType, (LPBYTE)&dwPostalNum, &dwData);
+		kY = dwPostalNum * 1.0E-3;
+		RegQueryValueEx(hKeyResult, TEXT("kYOffset"), NULL, &dwType, NULL, &dwData);
+		RegQueryValueEx(hKeyResult, TEXT("kYOffset"), NULL, &dwType, (LPBYTE)&dwPostalNum, &dwData);
+		kYOffset = dwPostalNum * 0.1;
+		RegQueryValueEx(hKeyResult, TEXT("kZFar"), NULL, &dwType, NULL, &dwData);
+		RegQueryValueEx(hKeyResult, TEXT("kZFar"), NULL, &dwType, (LPBYTE)&dwPostalNum, &dwData);
+		kZFar = dwPostalNum * 100;
+	}
+	RegCloseKey(hKeyResult);
 
 	auto input = Polycode::CoreServices::getInstance()->getInput();
 	using Polycode::InputEvent;
@@ -101,8 +141,15 @@ void RSClient::handleEvent(Polycode::Event *e) {
 			}
 			case Polycode::PolyKEY::KEY_COMMA:
 			{
-				kZFar-= zfarunit;
+				kZFar -= zfarunit;
 				break;
+			}
+			case Polycode::PolyKEY::KEY_a:
+			{
+				kX = 1.0E-2;
+				kY = 1.0E-2;
+				kYOffset = 0.7;
+				kZFar = 1200;
 			}
 		}
 		switch (key) {
@@ -114,7 +161,24 @@ void RSClient::handleEvent(Polycode::Event *e) {
 			case Polycode::PolyKEY::KEY_n:
 			case Polycode::PolyKEY::KEY_m:
 			case Polycode::PolyKEY::KEY_COMMA:
+			case Polycode::PolyKEY::KEY_a:
 			{
+				LONG lResult;
+				DWORD dwDisposition;
+				static HKEY hKeyResult;
+				DWORD dwData;
+				DWORD dwType = REG_DWORD;
+				static DWORD dwPostalNum;
+				RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\Mobamas"), NULL, KEY_ALL_ACCESS, &hKeyResult);
+				dwPostalNum = kX * 1.0E3 + 0.0005;
+				RegSetValueEx(hKeyResult, TEXT("kX"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+				dwPostalNum = kY * 1.0E3 + 0.0005;
+				RegSetValueEx(hKeyResult, TEXT("kY"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+				dwPostalNum = kYOffset * 10;
+				RegSetValueEx(hKeyResult, TEXT("kYOffset"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+				dwPostalNum = kZFar / 100;
+				RegSetValueEx(hKeyResult, TEXT("kZFar"), 0, REG_DWORD, (CONST BYTE*)&dwPostalNum, sizeof(dwPostalNum));
+				RegCloseKey(hKeyResult);
 				std::cout << "kX: " << kX << ", kY: " << kY << ", kYOffset: " << kYOffset << ", kZFar: " << kZFar << std::endl;
 				break;
 			}
